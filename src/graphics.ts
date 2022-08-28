@@ -3,7 +3,6 @@
 import * as glm from "gl-matrix" 
 import {Shader} from "./shader"
 import * as shaders from "./shader"
-import { normalize } from "path";
 
 let i = 0
 let value = 0.0
@@ -34,8 +33,40 @@ const clamp = (num:number, min:number, max:number) => Math.min(Math.max(num, min
 // }, false);
 
 
-function quadratic(a:number, b:number, c:number){
+function quadratic(a:number, b:number, c:number):Array<number>{
 
+    let t0 = (-b + Math.sqrt((b*b) - (4*a*c)))/(2*a);
+    let t1 = (-b + Math.sqrt((b*b) + (4*a*c)))/(2*a);
+    return [t0, t1];
+
+
+}
+function rayCircle(rayO:glm.vec2, rayD:glm.vec2, circleOrigin:glm.vec2):number {
+
+    let wv:glm.vec2 = glm.vec2.fromValues(0, 0);
+
+	let L = glm.vec2.sub(wv, rayO, circleOrigin);
+	let a = glm.vec2.dot(rayD, rayD);
+	let b = 2.0 * glm.vec2.dot(rayD, L);
+	let c = glm.vec2.dot(L, L) - (BALL_RADIUS*BALL_RADIUS);
+	let t0:number, t1:number;
+	let ts:Array<number> = quadratic(a, b, c);
+    t0 = ts[0];
+    t1 = ts[1];
+
+
+	if (t0 > t1) {
+        t0 = ts[1];
+        t1 = ts[0];
+	}
+	if (t0 < 0) {
+		t0 = t1;
+		if (t0 < 0) {
+			return Number.MAX_VALUE
+		}
+	}
+
+    return t0;
 }
 
 function main() {
@@ -161,6 +192,7 @@ function main() {
     }
 
     function shootRay(e:MouseEvent) {
+        let wv = glm.vec2.fromValues(0, 0);
         console.log("shooting ray")
         let rayO:glm.vec2 = glm.vec2.fromValues(WIDTH/2, HEIGHT);
         const rect = canvas.getBoundingClientRect();
@@ -172,23 +204,20 @@ function main() {
         var minT:number = Number.MAX_VALUE;
         var minIdx:number = -1;
 
+        // let fakePositions = [[400, 500]]
+        // rayDir = glm.vec2.fromValues(0, 1);
         for(let i = 0; i < positions.length; i++){
-            let U:glm.vec2 = glm.vec2.fromValues(0,0);
-            let C:glm.vec2 = glm.vec2.fromValues(positions[i][0], positions[i][1])
-            glm.vec2.sub(U, C, rayO);
-            glm.vec2.normalize(U, U);
-            let U1:glm.vec2 = glm.vec2.fromValues(0,0);
-            let t:number = glm.vec2.dot(U, rayDir)
-            glm.vec2.multiply(U1, glm.vec2.fromValues(t, t), rayDir);
-            let U2:glm.vec2 = glm.vec2.fromValues(0,0);
-            glm.vec2.subtract(U2, U, U1);
-            let d:number = glm.vec2.length(U2);
-            console.log("distance of", i, ":", d);
-            console.log(U, C, U1, U2);
-            if(d < BALL_RADIUS && d < minT){
-                minT = d;
+            
+            let C:glm.vec2 = glm.vec2.fromValues(positions[i][0], positions[i][1]);
+            let t0 = rayCircle(rayO, rayDir, C);
+            
+            
+            if(t0 < minT){
+                minT = t0;
                 minIdx = i;
             }
+            
+            
         }
         console.log("minimum hit", minIdx, minT);
         if(minIdx >= 0) {
