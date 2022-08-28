@@ -51,9 +51,6 @@ export class Shader{
         return gl.getAttribLocation(this.program, attrib);
     }
     getULoc(gl:WebGL2RenderingContext, uniform:string){
-        //console.log("getting uniform location of ", uniform);
-        
-        //console.log("got", gl.getUniformLocation(this.program, uniform));
         return gl.getUniformLocation(this.program, uniform);
     }
 }
