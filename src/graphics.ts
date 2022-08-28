@@ -1,6 +1,10 @@
 "use strict";
 
 import * as glm from "gl-matrix" 
+import {Shader} from "./shader"
+import * as shaders from "./shader"
+import { normalize } from "path";
+import * as glDebug from "./webgl-debug"
 
 let i = 0
 let value = 0.0
@@ -9,54 +13,26 @@ let program:WebGLProgram|null
 const BALL_RADIUS:number = 10;
 
 
-const WIDTH:number = 1000;
+const WIDTH:number = 800;
 const HEIGHT:number = 800;
 
-
-var vertexShaderSource = `#version 300 es
-     
-in vec2 aPos;
-uniform float width;
-uniform float height;
-uniform float ballRadius;
-
-void main() {
-    gl_PointSize = ballRadius*2.0;
-
-    vec2 normalized = ((aPos/vec2(width, height))-vec2(0.5))*2.0;
-    gl_Position = vec4(normalized, 0, 1);
-}
-`;
- 
-var fragmentShaderSource = `#version 300 es
- 
-precision mediump float;
- 
-// we need to declare an output for the fragment shader
-out vec4 outColor;
- 
-
-void main() {
-  // Just set the output to a constant reddish-purple
-
-    float r = 0.0;
-    vec2 cxy = 2.0 * gl_PointCoord - 1.0;
-    r = dot(cxy, cxy);
-    if (r > 1.0) {
-        discard;
-    } 
-    outColor = vec4(0.5, 0.5, 1.0, 1.0);
-    
-
-}
-`;
+var mouseX = 0;
+var mouseY = 0
 
 
 
 
-function distance_2(x1:number, y1:number, x2:number, y2:number) {
-    return Math.pow((x2-x1), 2)+Math.pow((y2-y1), 2);
-}
+
+var resolveStep;
+
+const clamp = (num:number, min:number, max:number) => Math.min(Math.max(num, min), max);
+
+document.addEventListener("dragover", function(e){
+    e = e || window.event;
+    var dragX = e.pageX, dragY = e.pageY;
+
+    console.log("X: "+dragX+" Y: "+dragY);
+}, false);
 
 function main() {
     
@@ -64,6 +40,11 @@ function main() {
     canvas.width = WIDTH;
     canvas.height = HEIGHT;
    
+    window.addEventListener('mousemove', (e:MouseEvent) => {
+        const rect = canvas.getBoundingClientRect()
+        mouseX = e.clientX-rect.left
+        mouseY = e.clientY-rect.top
+    });
     // Initialize the GL context
     if(canvas == null) {
         throw "can't find canvas";
@@ -73,64 +54,79 @@ function main() {
     if (tempGl === null) {
         throw "browser doesn't support webgl";
     }
-    gl = tempGl
+    // function throwOnGLError(err:any, funcName:any, args:any) {
+    //     throw glDebug.WebGLDebugUtils.glEnumToString(err) + " was caused by call to: " + funcName;
+    //   };
+    //   function logGLCall(functionName:any, args:any) {   
+    //     console.log("gl." + functionName + "(" + 
+    //        glDebug.WebGLDebugUtils.glFunctionArgsToString(functionName, args) + ")");   
+    //  } 
+    //  function validateNoneOfTheArgsAreUndefined(functionName:any, args:any) {
+    //     for (var ii = 0; ii < args.length; ++ii) {
+    //       if (args[ii] === undefined) {
+    //         console.error("undefined passed to gl." + functionName + "(" +
+    //                        glDebug.WebGLDebugUtils.glFunctionArgsToString(functionName, args) + ")");
+    //       }
+    //     }
+    //   } 
+    //gl = glDebug.WebGLDebugUtils.makeDebugContext(tempGl, throwOnGLError, validateNoneOfTheArgsAreUndefined, null as any);
+    gl =  tempGl
 
     let value:number = 0.0;
     let i = 0;
 
-    let ballShader = new Shader(gl, vertexShaderSource, fragmentShaderSource);
+    let ballShader = new Shader(gl, shaders.ballVertSource, shaders.ballFragSource);
+    let rayShader = new Shader(gl, shaders.rayVertSource, shaders.rayFragSource);
 
 
 
     
-    var numberOfBalls = 0;
-    var positions:Array<number> = [];
+    //var numberOfBalls = 0;
+
+    var positions:Array<Array<number>> = [];
     var velocities:Array<number> = [];
-    var accelerations:Array<number> = [];
-
-    for(let x = BALL_RADIUS*2; x < WIDTH/2; x+=(BALL_RADIUS*4)){
-        for(let y = BALL_RADIUS*2; y < HEIGHT; y+=(BALL_RADIUS*4))
-        {
-            numberOfBalls++;
-            positions.push(x+(y/BALL_RADIUS));
-            positions.push(y);
-            velocities.push(0);
-            velocities.push(0);
-            accelerations.push(0);
-            accelerations.push(0);
-
-        }
-    }
-    console.log(positions)
-
-    // positions = [0, 0,
-    // 100, 0,
-    // 0, 100];
-
-    // let fPos = new Float32Array(positions);
-    // console.log(fPos)
+    var rays:Array<Array<number>> = []; //x1, y1, time, x2, y2, time
 
 
-    const positionLoc = ballShader.getALoc(gl, "aPos");
-    console.log("positionLoc", positionLoc)
-    var ballVAO = gl.createVertexArray();
-    var ballVBO = gl.createBuffer();
-    gl.bindVertexArray(ballVAO);
-    gl.bindBuffer(gl.ARRAY_BUFFER, ballVBO);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions), gl.STATIC_DRAW);
-
-    gl.enableVertexAttribArray(positionLoc);
-    gl.vertexAttribPointer(positionLoc, 2, gl.FLOAT, false, 0, 0)
-    
-    gl.bindVertexArray(null);
-    gl.bindBuffer(gl.ARRAY_BUFFER, null);
 
     gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
 
 
 
+    //console.log("positionLoc", positionLoc)
+    var ballVAO = gl.createVertexArray();
+    var ballVBO = gl.createBuffer();
+    gl.bindVertexArray(ballVAO);
+    gl.bindBuffer(gl.ARRAY_BUFFER, ballVBO);
+    // gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions), gl.STATIC_DRAW);
 
+    gl.enableVertexAttribArray(0);
+    gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0)
+    
+    gl.bindVertexArray(null);
+    gl.bindBuffer(gl.ARRAY_BUFFER, null);
 
+    gl.bindAttribLocation(ballShader.getProg(), 0, "aPos")
+
+    ballShader.relink(gl);
+    
+    var rayVAO = gl.createVertexArray();
+    var rayVBO = gl.createBuffer();
+    gl.bindVertexArray(rayVAO);
+    gl.bindBuffer(gl.ARRAY_BUFFER, rayVBO);
+    // gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions), gl.STATIC_DRAW);
+    
+    gl.enableVertexAttribArray(0);
+    gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0)
+    
+    gl.bindAttribLocation(rayShader.getProg(), 0, "aPos")
+
+    gl.bindVertexArray(null);
+    gl.bindBuffer(gl.ARRAY_BUFFER, null);
+    
+    gl.lineWidth(30);
+
+    rayShader.relink(gl);
 
     //var orth = ortho(0, WIDTH, 0, HEIGHT, 0.1, 5)
     
@@ -148,80 +144,124 @@ function main() {
     gl.uniform1f(heightLoc, HEIGHT);
     gl.uniform1f(radiusLoc, BALL_RADIUS);
 
+    rayShader.use(gl);
+    let rayWidthLoc = rayShader.getULoc(gl, "width")
+    let rayHeightLoc = rayShader.getULoc(gl, "height")
+
     let lastTime = 0;
     let deltaTime = 0;
+    let cTime = 0
+
+
+    let go = true;
+    function printPos(event:KeyboardEvent):any{
+        if(event.key == " "){
+            go = !go;
+            console.log(positions);
+        }
+    }
+    let selectedBall = -1;
+    // function selectBall(event:MouseEvent){
+    //     for(let i = 0; i < velocities.length; i++) {
+    //         let oidx = i*2;
+    //     }
+    //     const rect = canvas.getBoundingClientRect()
+    //     let pos:glm.vec2 =  
+    //     console.log(event.clientX-rect.left)
+    //     console.log(event.clientY-rect.top)
+    // }
+    function spawnMeteor(){
+        positions.push([Math.random()*WIDTH, HEIGHT])
+        velocities.push(-Math.random()*50)
+    }
+
+    function shootRay(e:MouseEvent) {
+        let org:glm.vec2 = glm.vec2.fromValues(WIDTH/2, HEIGHT);
+        const rect = canvas.getBoundingClientRect();
+        let dest:glm.vec2 = glm.vec2.fromValues(e.clientX-rect.left, e.clientY-rect.top);
+        let rayDir = glm.vec2.normalize(dest, glm.vec2.sub(dest, dest, org))
+        let endPoint = glm.vec2.multiply(rayDir, rayDir, glm.vec2.fromValues(WIDTH*HEIGHT, WIDTH*HEIGHT));
+        //rays.push([WIDTH/2, -HEIGHT, cTime/1000, endPoint[0], endPoint[1], cTime/1000]);
+        //rays = [];
+        rays.push([0.0, 0.0, cTime/1000.0, WIDTH, HEIGHT, cTime/1000.0]);
+
+    }
+
+    canvas.addEventListener("click", shootRay, false)
+    canvas.addEventListener("keydown", printPos, false)
+
+    let frameNumber = 0;
+    let lastSecond = 0;
+
+    positions.push([0, 0]);
+    velocities.push(0);
+    //rays.push([0.0, 0.0, lastTime/1000, WIDTH, HEIGHT, lastTime/1000]);
 
     function draw(currentTime:number){
-        deltaTime = currentTime-lastTime;
+        cTime = currentTime;
+        deltaTime = (currentTime-lastTime)/1000.0;
         lastTime = currentTime;
+        if(!go){requestAnimationFrame(draw); return;}
+        //positions[0] = [mouseX, HEIGHT-mouseY];
+        
+//update velcities and positions for each ball
+        for(let i = 0; i < positions.length; i++) {
+            positions[i][1] += velocities[i] * deltaTime;
+        }
+//spawn meteors every second
+        let thisSecond = Math.floor(currentTime/1000);
+        //console.log(currentTime, Math.floor(currentTime/1000), thisSecond, lastSecond)
+        if(thisSecond != lastSecond){
+            spawnMeteor();
+            lastSecond = thisSecond;
+        }
+//remove meteors that go too far
+        //console.log(positions)
+        velocities = velocities.filter((v, i) => positions[i][1]>0);
+        positions = positions.filter((v, i) => v[1]>0);
+        //rays = rays.filter((v)=> v[2]+1.5 > currentTime);
+        //console.log(positions)
+
+
+        frameNumber++;
+        
+        //console.log("dt:", deltaTime)
         
         gl.clearColor(0.1, 0.1, 0.1, 1.0);
         gl.clear(gl.COLOR_BUFFER_BIT);
 
-        let wv2 = glm.vec2.fromValues(0,0);
 
-
-        for(let origin = 0; origin < numberOfBalls; origin++) {
-            let oidx = origin*2;
-            let pos1 = glm.vec2.fromValues(positions[oidx + 0], positions[oidx + 1])
-            for(let collider = 0; collider < numberOfBalls; collider++) {
-                let cidx = collider*2;
-                let pos2 = glm.vec2.fromValues(positions[cidx+0], positions[cidx+1]);
-
-                if(origin == collider)continue;
-                let overlap2 = glm.vec2.squaredDistance(pos1, pos2);
-                if(overlap2 <= Math.pow((2*BALL_RADIUS), 2)) {
-                    let overlap = Math.sqrt(overlap2);
-                    
-                    let originOutvec = glm.vec2.normalize(wv2, glm.vec2.subtract(wv2, pos1, pos2));
-                    let colliderOutVec = glm.vec2.inverse(wv2, originOutvec);
-                    let overlapVec = glm.vec2.fromValues(overlap/2.0, overlap/2.0);
-
-                    pos1 = glm.vec2.add(wv2, pos1, glm.vec2.multiply(wv2, originOutvec, overlapVec));
-                    pos2 = glm.vec2.add(wv2, pos2, glm.vec2.multiply(wv2, colliderOutVec, overlapVec));
-
-
-
-                    //collision
-
-                    positions[cidx+0] = pos2[0];
-                    positions[cidx+1] = pos2[1];
-                }
-                
-                positions[oidx+0] = pos1[0];
-                positions[oidx+1] = pos1[1];
-            }
-        }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-        gl.bindVertexArray(ballVAO);
-        gl.bindBuffer(gl.ARRAY_BUFFER, ballVBO);
-        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions), gl.STATIC_DRAW);        
-        gl.bindVertexArray(null);
-        gl.bindBuffer(gl.ARRAY_BUFFER, null);
-        
         ballShader.use(gl);
         
+        gl.uniform1f(widthLoc, WIDTH);
+        gl.uniform1f(heightLoc, HEIGHT);
         gl.bindVertexArray(ballVAO);
         gl.bindBuffer(gl.ARRAY_BUFFER, ballVBO);
-
-        gl.drawArrays(gl.POINTS, 0, numberOfBalls);
-
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions.flat()), gl.STATIC_DRAW);        
+        gl.drawArrays(gl.POINTS, 0, velocities.length);
         gl.bindBuffer(gl.ARRAY_BUFFER, null);
         gl.bindVertexArray(null);
         
+
+        rayShader.use(gl);
+        
+        gl.uniform1f(rayWidthLoc, WIDTH);
+        gl.uniform1f(rayHeightLoc, HEIGHT);
+        let currTimeLoc = ballShader.getULoc(gl, "currTime")
+        //console.log("currTimeLoc", currTimeLoc);
+        gl.uniform1f(currTimeLoc, currentTime/1000.0);
+
+        // console.log(currentTime/1000, rays[0][2], Math.max(0, rays[0][2]-currentTime/1000));
+
+
+        gl.bindVertexArray(rayVAO);
+        gl.bindBuffer(gl.ARRAY_BUFFER, rayVBO);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(rays.flat()), gl.STATIC_DRAW); 
+        gl.drawArrays(gl.LINES, 0, rays.length*2);
+        gl.bindBuffer(gl.ARRAY_BUFFER, null);
+        gl.bindVertexArray(null);
+
+
         window.requestAnimationFrame(draw);
     }
 
@@ -231,83 +271,3 @@ function main() {
   
   
 window.onload = main;
-
-
-
-//100% stolen from the gl-matrix library, because I didn't want to deal with webpacking js modules, so I just copied/pasted it
-function ortho(left:number, right:number, bottom:number, top:number, near:number, far:number) :Array<number> {
-    let out:Array<number> = [];
-    var lr = 1 / (left - right);
-    var bt = 1 / (bottom - top);
-    var nf = 1 / (near - far);
-    out[0] = -2 * lr;
-    out[1] = 0;
-    out[2] = 0;
-    out[3] = 0;
-    out[4] = 0;
-    out[5] = -2 * bt;
-    out[6] = 0;
-    out[7] = 0;
-    out[8] = 0;
-    out[9] = 0;
-    out[10] = 2 * nf;
-    out[11] = 0;
-    out[12] = (left + right) * lr;
-    out[13] = (top + bottom) * bt;
-    out[14] = (far + near) * nf;
-    out[15] = 1;
-    return out;
-}
-
-class Shader{
-    program:WebGLProgram
-    constructor(gl:WebGL2RenderingContext, vertSource:string, fragSource:string){
-        let tempProg = gl.createProgram();
-        if(tempProg == null) {
-            throw "program shader is null";
-        }
-        this.program = tempProg;
-        let fragShader = gl.createShader(gl.FRAGMENT_SHADER);
-        if(fragShader == null) {
-            throw "frag shader is null"
-        }
-        gl.shaderSource(fragShader, fragSource);
-        gl.compileShader(fragShader);
-        if (!gl.getShaderParameter(fragShader, gl.COMPILE_STATUS)) {
-            const info = gl.getShaderInfoLog(fragShader);
-            throw `Could not compile fragShader. \n\n${info}`;
-        }
-        let vertShader = gl.createShader(gl.VERTEX_SHADER);
-        if(vertShader == null) {
-            throw "vert shader is null"
-        }
-        gl.shaderSource(vertShader, vertSource);
-        gl.compileShader(vertShader);
-        if (!gl.getShaderParameter(vertShader, gl.COMPILE_STATUS)) {
-            const info = gl.getShaderInfoLog(vertShader);
-            throw `Could not compile vertShader. \n\n${info}`;
-        }
-
-        gl.attachShader(this.program, vertShader);
-        gl.attachShader(this.program, fragShader);
-        
-        gl.linkProgram(this.program)
-        
-        if (!gl.getProgramParameter(this.program, gl.LINK_STATUS)) {
-            const info = gl.getProgramInfoLog(this.program);
-            throw `Could not compile WebGL program. \n\n${info}`;
-        }
-    }
-    use(gl:WebGL2RenderingContext){
-        gl.useProgram(this.program);
-    }
-    getProg():WebGLProgram{
-        return this.program;
-    }
-    getALoc(gl:WebGL2RenderingContext, attrib:string){
-        return gl.getAttribLocation(this.program, attrib);
-    }
-    getULoc(gl:WebGL2RenderingContext, uniform:string){
-        return gl.getUniformLocation(this.program, uniform);
-    }
-}
