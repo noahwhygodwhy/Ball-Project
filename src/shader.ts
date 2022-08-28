@@ -101,7 +101,10 @@ out float spawnedTime;
 void main() {
     spawnedTime = aPos.z;
 
+    //vec2 normalized = vec2(currTime-aPos.z, 0);
     vec2 normalized = ((vec2(aPos.xy)/vec2(width, height))-vec2(0.5))*2.0;
+    //normalized.x += clamp((aPos.z-currTime), 0.0, 1.0);
+    //normalized += vec2(aPos.z-currTime, 0);
     gl_Position = vec4(normalized, 0, 1);
 }
 `;

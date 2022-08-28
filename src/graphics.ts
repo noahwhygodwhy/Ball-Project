@@ -181,9 +181,10 @@ function main() {
         let dest:glm.vec2 = glm.vec2.fromValues(e.clientX-rect.left, e.clientY-rect.top);
         let rayDir = glm.vec2.normalize(dest, glm.vec2.sub(dest, dest, org))
         let endPoint = glm.vec2.multiply(rayDir, rayDir, glm.vec2.fromValues(WIDTH*HEIGHT, WIDTH*HEIGHT));
-        //rays.push([WIDTH/2, -HEIGHT, cTime/1000, endPoint[0], endPoint[1], cTime/1000]);
+        rays.push([WIDTH/2, 0, cTime/1000, endPoint[0], -endPoint[1], cTime/1000]);
+        //rays.push([WIDTH/2, 0, cTime/1000, WIDTH/2, HEIGHT/2, cTime/1000]);
         //rays = [];
-        rays.push([0.0, 0.0, cTime/1000.0, WIDTH, HEIGHT, cTime/1000.0]);
+        //rays.push([0.0, 0.0, cTime/1000.0, WIDTH, HEIGHT, cTime/1000.0]);
 
     }
 
@@ -219,7 +220,7 @@ function main() {
         //console.log(positions)
         velocities = velocities.filter((v, i) => positions[i][1]>0);
         positions = positions.filter((v, i) => v[1]>0);
-        //rays = rays.filter((v)=> v[2]+1.5 > currentTime);
+        rays = rays.filter((v)=> ((v[2]+0.9) > (currentTime/1000.0)));
         //console.log(positions)
 
 
@@ -247,11 +248,12 @@ function main() {
         
         gl.uniform1f(rayWidthLoc, WIDTH);
         gl.uniform1f(rayHeightLoc, HEIGHT);
-        let currTimeLoc = ballShader.getULoc(gl, "currTime")
-        //console.log("currTimeLoc", currTimeLoc);
-        gl.uniform1f(currTimeLoc, currentTime/1000.0);
-
-        // console.log(currentTime/1000, rays[0][2], Math.max(0, rays[0][2]-currentTime/1000));
+        let currTimeLoc = rayShader.getULoc(gl, "currTime")
+        console.log("currTimeLoc", currTimeLoc);
+        gl.uniform1f(currTimeLoc, cTime/1000.0);
+        if(rays.length>0){
+            console.log(currentTime/1000, rays[0][2], Math.max(0, rays[0][2]-currentTime/1000));
+        }
 
 
         gl.bindVertexArray(rayVAO);
