@@ -26,12 +26,17 @@ var resolveStep;
 
 const clamp = (num:number, min:number, max:number) => Math.min(Math.max(num, min), max);
 
-document.addEventListener("dragover", function(e){
-    e = e || window.event;
-    var dragX = e.pageX, dragY = e.pageY;
+// document.addEventListener("dragover", function(e){
+//     e = e || window.event;
+//     var dragX = e.pageX
+//     var dragY = e.pageY;
 
-    console.log("X: "+dragX+" Y: "+dragY);
-}, false);
+// }, false);
+
+
+function quadratic(a:number, b:number, c:number){
+
+}
 
 function main() {
     
@@ -53,22 +58,7 @@ function main() {
     if (tempGl === null) {
         throw "browser doesn't support webgl";
     }
-    // function throwOnGLError(err:any, funcName:any, args:any) {
-    //     throw glDebug.WebGLDebugUtils.glEnumToString(err) + " was caused by call to: " + funcName;
-    //   };
-    //   function logGLCall(functionName:any, args:any) {   
-    //     console.log("gl." + functionName + "(" + 
-    //        glDebug.WebGLDebugUtils.glFunctionArgsToString(functionName, args) + ")");   
-    //  } 
-    //  function validateNoneOfTheArgsAreUndefined(functionName:any, args:any) {
-    //     for (var ii = 0; ii < args.length; ++ii) {
-    //       if (args[ii] === undefined) {
-    //         console.error("undefined passed to gl." + functionName + "(" +
-    //                        glDebug.WebGLDebugUtils.glFunctionArgsToString(functionName, args) + ")");
-    //       }
-    //     }
-    //   } 
-    //gl = glDebug.WebGLDebugUtils.makeDebugContext(tempGl, throwOnGLError, validateNoneOfTheArgsAreUndefined, null as any);
+
     gl =  tempGl
 
     let value:number = 0.0;
@@ -92,7 +82,6 @@ function main() {
 
 
 
-    //console.log("positionLoc", positionLoc)
     var ballVAO = gl.createVertexArray();
     var ballVBO = gl.createBuffer();
     gl.bindVertexArray(ballVAO);
@@ -129,7 +118,6 @@ function main() {
 
     //var orth = ortho(0, WIDTH, 0, HEIGHT, 0.1, 5)
     
-    //console.log(orth);
     
     ballShader.use(gl);
     //let orthoLoc = ballShader.getULoc(gl, "projection")
@@ -156,7 +144,7 @@ function main() {
     function printPos(event:KeyboardEvent):any{
         if(event.key == " "){
             go = !go;
-            console.log(positions);
+            //console.log(positions);
         }
     }
     let selectedBall = -1;
@@ -166,8 +154,6 @@ function main() {
     //     }
     //     const rect = canvas.getBoundingClientRect()
     //     let pos:glm.vec2 =  
-    //     console.log(event.clientX-rect.left)
-    //     console.log(event.clientY-rect.top)
     // }
     function spawnMeteor(){
         positions.push([Math.random()*WIDTH, HEIGHT])
@@ -175,12 +161,42 @@ function main() {
     }
 
     function shootRay(e:MouseEvent) {
-        let org:glm.vec2 = glm.vec2.fromValues(WIDTH/2, HEIGHT);
+        console.log("shooting ray")
+        let rayO:glm.vec2 = glm.vec2.fromValues(WIDTH/2, HEIGHT);
         const rect = canvas.getBoundingClientRect();
         let dest:glm.vec2 = glm.vec2.fromValues(e.clientX-rect.left, e.clientY-rect.top);
-        let rayDir = glm.vec2.normalize(dest, glm.vec2.sub(dest, dest, org))
+        let rayDir = glm.vec2.normalize(dest, glm.vec2.sub(dest, dest, rayO))
         let endPoint = glm.vec2.multiply(rayDir, rayDir, glm.vec2.fromValues(WIDTH*HEIGHT, WIDTH*HEIGHT));
         rays.push([WIDTH/2, 0, cTime/1000, endPoint[0], -endPoint[1], cTime/1000]);
+
+        var minT:number = Number.MAX_VALUE;
+        var minIdx:number = -1;
+
+        for(let i = 0; i < positions.length; i++){
+            let U:glm.vec2 = glm.vec2.fromValues(0,0);
+            let C:glm.vec2 = glm.vec2.fromValues(positions[i][0], positions[i][1])
+            glm.vec2.sub(U, C, rayO);
+            glm.vec2.normalize(U, U);
+            let U1:glm.vec2 = glm.vec2.fromValues(0,0);
+            let t:number = glm.vec2.dot(U, rayDir)
+            glm.vec2.multiply(U1, glm.vec2.fromValues(t, t), rayDir);
+            let U2:glm.vec2 = glm.vec2.fromValues(0,0);
+            glm.vec2.subtract(U2, U, U1);
+            let d:number = glm.vec2.length(U2);
+            console.log("distance of", i, ":", d);
+            console.log(U, C, U1, U2);
+            if(d < BALL_RADIUS && d < minT){
+                minT = d;
+                minIdx = i;
+            }
+        }
+        console.log("minimum hit", minIdx, minT);
+        if(minIdx >= 0) {
+            positions = positions.filter((v, i)=>i!=minIdx);
+            velocities = velocities.filter((v, i)=>i!=minIdx);
+        }
+
+
         //rays.push([WIDTH/2, 0, cTime/1000, WIDTH/2, HEIGHT/2, cTime/1000]);
         //rays = [];
         //rays.push([0.0, 0.0, cTime/1000.0, WIDTH, HEIGHT, cTime/1000.0]);
@@ -210,22 +226,18 @@ function main() {
         }
 //spawn meteors every second
         let thisSecond = Math.floor(currentTime/1000);
-        //console.log(currentTime, Math.floor(currentTime/1000), thisSecond, lastSecond)
         if(thisSecond != lastSecond){
             spawnMeteor();
             lastSecond = thisSecond;
         }
 //remove meteors that go too far
-        //console.log(positions)
         velocities = velocities.filter((v, i) => positions[i][1]>0);
         positions = positions.filter((v, i) => v[1]>0);
         rays = rays.filter((v)=> ((v[2]+0.9) > (currentTime/1000.0)));
-        //console.log(positions)
 
 
         frameNumber++;
         
-        //console.log("dt:", deltaTime)
         
         gl.clearColor(0.1, 0.1, 0.1, 1.0);
         gl.clear(gl.COLOR_BUFFER_BIT);
@@ -248,11 +260,8 @@ function main() {
         gl.uniform1f(rayWidthLoc, WIDTH);
         gl.uniform1f(rayHeightLoc, HEIGHT);
         let currTimeLoc = rayShader.getULoc(gl, "currTime")
-        console.log("currTimeLoc", currTimeLoc);
         gl.uniform1f(currTimeLoc, cTime/1000.0);
-        if(rays.length>0){
-            console.log(currentTime/1000, rays[0][2], Math.max(0, rays[0][2]-currentTime/1000));
-        }
+        
 
 
         gl.bindVertexArray(rayVAO);
