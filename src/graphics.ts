@@ -4,7 +4,6 @@ import * as glm from "gl-matrix"
 import {Shader} from "./shader"
 import * as shaders from "./shader"
 import { normalize } from "path";
-import * as glDebug from "./webgl-debug"
 
 let i = 0
 let value = 0.0
