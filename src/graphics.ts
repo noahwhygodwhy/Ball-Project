@@ -49,11 +49,14 @@ function rayCircle(rayO:glm.vec2, rayD:glm.vec2, circleOrigin:glm.vec2):number {
 	let a = glm.vec2.dot(rayD, rayD);
 	let b = 2.0 * glm.vec2.dot(rayD, L);
 	let c = glm.vec2.dot(L, L) - (BALL_RADIUS*BALL_RADIUS);
+    console.log(a, b, c)
+
+
 	let t0:number, t1:number;
 	let ts:Array<number> = quadratic(a, b, c);
     t0 = ts[0];
     t1 = ts[1];
-
+    console.log(t0, t1);
 
 	if (t0 > t1) {
         t0 = ts[1];
