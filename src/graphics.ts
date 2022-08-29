@@ -34,9 +34,12 @@ const clamp = (num:number, min:number, max:number) => Math.min(Math.max(num, min
 
 
 function quadratic(a:number, b:number, c:number):Array<number>{
-
-    let t0 = (-b + Math.sqrt((b*b) - (4*a*c)))/(2*a);
-    let t1 = (-b + Math.sqrt((b*b) + (4*a*c)))/(2*a);
+    let insideRoot = (b*b) - (4*a*c)
+    if(insideRoot <0){
+        return [Number.MAX_VALUE, Number.MAX_VALUE];
+    }
+    let t0 = (-b - Math.sqrt(insideRoot))/(2*a);
+    let t1 = (-b + Math.sqrt(insideRoot))/(2*a);
     return [t0, t1];
 
 
@@ -49,14 +52,14 @@ function rayCircle(rayO:glm.vec2, rayD:glm.vec2, circleOrigin:glm.vec2):number {
 	let a = glm.vec2.dot(rayD, rayD);
 	let b = 2.0 * glm.vec2.dot(rayD, L);
 	let c = glm.vec2.dot(L, L) - (BALL_RADIUS*BALL_RADIUS);
-    console.log(a, b, c)
+    //console.log(a, b, c)
 
 
 	let t0:number, t1:number;
 	let ts:Array<number> = quadratic(a, b, c);
     t0 = ts[0];
     t1 = ts[1];
-    console.log(t0, t1);
+    //console.log(t0, t1);
 
 	if (t0 > t1) {
         t0 = ts[1];
@@ -196,13 +199,12 @@ function main() {
 
     function shootRay(e:MouseEvent) {
         let wv = glm.vec2.fromValues(0, 0);
-        console.log("shooting ray")
-        let rayO:glm.vec2 = glm.vec2.fromValues(WIDTH/2, HEIGHT);
+        let rayO:glm.vec2 = glm.vec2.fromValues(WIDTH/2, 0);
         const rect = canvas.getBoundingClientRect();
-        let dest:glm.vec2 = glm.vec2.fromValues(e.clientX-rect.left, e.clientY-rect.top);
-        let rayDir = glm.vec2.normalize(dest, glm.vec2.sub(dest, dest, rayO))
-        let endPoint = glm.vec2.multiply(rayDir, rayDir, glm.vec2.fromValues(WIDTH*HEIGHT, WIDTH*HEIGHT));
-        rays.push([WIDTH/2, 0, cTime/1000, endPoint[0], -endPoint[1], cTime/1000]);
+        let dest:glm.vec2 = glm.vec2.fromValues(e.clientX-rect.left, HEIGHT-(e.clientY-rect.top));
+        let rayDir = glm.vec2.normalize(wv, glm.vec2.sub(dest, dest, rayO))
+        let endPoint = glm.vec2.multiply(wv, rayDir, glm.vec2.fromValues(WIDTH*HEIGHT, WIDTH*HEIGHT));
+        rays.push([WIDTH/2, 0, cTime/1000, endPoint[0], endPoint[1], cTime/1000]);
 
         var minT:number = Number.MAX_VALUE;
         var minIdx:number = -1;
