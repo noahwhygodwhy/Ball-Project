@@ -21,7 +21,15 @@ var mouseY = 0
 
 
 
-var resolveStep;
+var resolveStep:(value: number | PromiseLike<number>) => void;
+
+function step(event:any) {
+    resolveStep(0);
+}
+
+async function genPromise(){
+    await new Promise((resolve:(value: number | PromiseLike<number>) => void) => resolveStep = resolve);
+}
 
 const clamp = (num:number, min:number, max:number) => Math.min(Math.max(num, min), max);
 
@@ -75,15 +83,21 @@ function rayCircle(rayO:glm.vec2, rayD:glm.vec2, circleOrigin:glm.vec2):number {
     return t0;
 }
 
-function main() {
-    
+
+
+async function main() {
+    document.getElementById("stepButton")?.addEventListener("click", step)
+    console.log("about to await");
+    await genPromise();
+    console.log("awaited")
+
     const canvas = document.querySelector("#glCanvas") as HTMLCanvasElement;
     canvas.width = WIDTH;
     canvas.height = HEIGHT;
    
     window.addEventListener('mousemove', (e:MouseEvent) => {
         const rect = canvas.getBoundingClientRect()
-        mouseX = e.clientX-rect.left
+        mouseX = e.clientX-rect.left 
         mouseY = e.clientY-rect.top
     });
     // Initialize the GL context
