@@ -17,7 +17,9 @@ const HEIGHT:number = 800;
 var mouseX = 0;
 var mouseY = 0
 
-
+var neighborMethods = ["Brute Force", "Uniform Grid", "Quad Tree", "KD Tree"];
+var currMethod = 0;
+var shootFunction:(this: HTMLCanvasElement, ev: MouseEvent) => any;
 
 
 
@@ -188,14 +190,12 @@ function main() {
     let deltaTime = 0;
     let cTime = 0
 
+    var currSteps = 0;
+    var minT:number = Number.MAX_VALUE;
+    var minIdx:number = -1;
+
 
     let go = true;
-    function printPos(event:KeyboardEvent):any{
-        if(event.key == " "){
-            go = !go;
-            //console.log(positions);
-        }
-    }
     let selectedBall = -1;
     // function selectBall(event:MouseEvent){
     //     for(let i = 0; i < velocities.length; i++) {
@@ -208,8 +208,29 @@ function main() {
         positions.push([Math.random()*WIDTH, HEIGHT])
         velocities.push(-Math.random()*50)
     }
+    
+    function updateText()
+    {
+        let modeElement = document.getElementById("modeText");
+        if(modeElement != null) {
+            modeElement.innerText = neighborMethods[currMethod];
+        }
+        let stepsElement = document.getElementById("stepsText");
+        if(stepsElement != null) {
+            stepsElement.innerText = String(currSteps);
+        }
+        let mintElement = document.getElementById("minT");
+        if(mintElement != null) {
+            mintElement.innerText = String(minT);
+        }
+        let miniElement = document.getElementById("minI");
+        if(miniElement != null) {
+            miniElement.innerText = String(minIdx);
+        }
+    }
 
-    async function shootRay(e:MouseEvent) {
+    async function shootRayBrute(e:MouseEvent) {
+        console.log("shoot rayBasic");
         if(go){
             go = false;
             let wv = glm.vec2.fromValues(0, 0);
@@ -220,40 +241,90 @@ function main() {
             let endPoint = glm.vec2.multiply(wv, rayDir, glm.vec2.fromValues(WIDTH*HEIGHT, WIDTH*HEIGHT));
             rays.push([WIDTH/2, 0, cTime/1000, endPoint[0], endPoint[1], cTime/1000]);
 
-            var minT:number = Number.MAX_VALUE;
-            var minIdx:number = -1;
-
-            // let fakePositions = [[400, 500]]
-            // rayDir = glm.vec2.fromValues(0, 1);
+            minT = Number.MAX_VALUE;
+            minIdx = -1;
+            currSteps = 0;
+            updateText();
+            
             for(let i = 0; i < positions.length; i++){
+                currSteps++;
                 selectedBall = i;
-                
                 let C:glm.vec2 = glm.vec2.fromValues(positions[i][0], positions[i][1]);
                 let t0 = rayCircle(rayO, rayDir, C);
-                
                 if(t0 < minT){
                     minT = t0;
                     minIdx = i;
                 }
                 
+                updateText();
                 await genPromise();
             }
-            console.log("minimum hit", minIdx, minT);
             selectedBall = -1;
             if(minIdx >= 0) {
                 positions = positions.filter((v, i)=>i!=minIdx);
                 velocities = velocities.filter((v, i)=>i!=minIdx);
-            }
+            } 
             go = true;
-            
         }
-        //rays.push([WIDTH/2, 0, cTime/1000, WIDTH/2, HEIGHT/2, cTime/1000]);
-        //rays = [];
-        //rays.push([0.0, 0.0, cTime/1000.0, WIDTH, HEIGHT, cTime/1000.0]);
-
+    }
+    
+    async function shootRayGrid(e:MouseEvent) {
+        console.log("shoot ray grid");
+        /**
+         * construct a grid partitioning system
+         * add all points into it
+         * use to compute ray/circle intersection
+         */
+    }
+    
+    async function shootRayQuad(e:MouseEvent) {
+        console.log("shoot ray quad");
+        /** 
+         * From list of points, create quad tree
+         * use quad tree to perform ray/circle intersection
+         */
+    }
+    
+    async function shootRayKD(e:MouseEvent) {
+        console.log("shoot ray quad");
+        /** 
+         * From list of points, create kd tree
+         * use kd tree to perform ray/circle intersection
+         */
     }
 
-    canvas.addEventListener("click", shootRay, false)
+    let shootFunctions = [shootRayBrute, shootRayGrid, shootRayQuad, shootRayKD];
+    function nextMode() {
+        currMethod = (currMethod+1)%neighborMethods.length;
+        canvas.removeEventListener("click", shootFunction, false)
+        shootFunction = shootFunctions[currMethod];
+        canvas.addEventListener("click", shootFunction, false)
+    }
+    function prevMode() {
+        currMethod = (currMethod-1)%neighborMethods.length;
+        canvas.removeEventListener("click", shootFunction, false)
+        shootFunction = shootFunctions[currMethod];
+        canvas.addEventListener("click", shootFunction, false)
+    }
+    
+    shootFunction = shootFunctions[currMethod];
+    canvas.addEventListener("click", shootFunction, false)
+
+    document.getElementById("nextMode")?.addEventListener("click", nextMode);
+    document.getElementById("prevMode")?.addEventListener("click", prevMode);
+
+    
+    function printPos(event:KeyboardEvent):any{
+        if(event.key == " "){
+            go = !go;
+            //console.log(positions);
+        }
+        if(event.key == "a"){
+            canvas.removeEventListener("click", shootFunction, false)
+            shootFunction = shootFunctions[1];
+            canvas.addEventListener("click", shootFunction, false)
+        }
+    }
     canvas.addEventListener("keydown", printPos, false)
 
     let lastSecond = 0;
