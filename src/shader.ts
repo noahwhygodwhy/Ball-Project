@@ -62,9 +62,11 @@ uniform float width;
 uniform float height;
 uniform float ballRadius;
 
+flat out int fragVertID;
+
 void main() {
     gl_PointSize = ballRadius*2.0;
-
+    fragVertID = gl_VertexID;
     vec2 normalized = ((aPos/vec2(width, height))-vec2(0.5))*2.0;
     gl_Position = vec4(normalized, 0, 1);
 }
@@ -76,6 +78,9 @@ export var ballFragSource = `#version 300 es
 precision mediump float;
 out vec4 outColor;
 
+uniform int selectedBall;
+flat in int fragVertID;
+
 void main() {
     float r = 0.0;
     vec2 cxy = 2.0 * gl_PointCoord - 1.0;
@@ -84,6 +89,9 @@ void main() {
         discard;
     } 
     outColor = vec4(0.5, 0.5, 1.0, 1.0);
+    if(selectedBall == fragVertID) {
+        outColor = vec4(1.0, 1.0, 0.0, 1.0);
+    }
 }
 `;
 

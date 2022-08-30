@@ -85,12 +85,9 @@ function rayCircle(rayO:glm.vec2, rayD:glm.vec2, circleOrigin:glm.vec2):number {
 
 
 
-async function main() {
+function main() {
     document.getElementById("stepButton")?.addEventListener("click", step)
-    console.log("about to await");
-    await genPromise();
-    console.log("awaited")
-
+    
     const canvas = document.querySelector("#glCanvas") as HTMLCanvasElement;
     canvas.width = WIDTH;
     canvas.height = HEIGHT;
@@ -112,8 +109,7 @@ async function main() {
 
     gl =  tempGl
 
-    let value:number = 0.0;
-    let i = 0;
+    let activeBall = -1;
 
     let ballShader = new Shader(gl, shaders.ballVertSource, shaders.ballFragSource);
     let rayShader = new Shader(gl, shaders.rayVertSource, shaders.rayFragSource);
@@ -178,6 +174,8 @@ async function main() {
     let widthLoc = ballShader.getULoc(gl, "width")
     let heightLoc = ballShader.getULoc(gl, "height")
     let radiusLoc = ballShader.getULoc(gl, "ballRadius")
+    let selectedBallLoc = ballShader.getULoc(gl, "selectedBall")
+
     gl.uniform1f(widthLoc, WIDTH);
     gl.uniform1f(heightLoc, HEIGHT);
     gl.uniform1f(radiusLoc, BALL_RADIUS);
@@ -211,40 +209,44 @@ async function main() {
         velocities.push(-Math.random()*50)
     }
 
-    function shootRay(e:MouseEvent) {
-        let wv = glm.vec2.fromValues(0, 0);
-        let rayO:glm.vec2 = glm.vec2.fromValues(WIDTH/2, 0);
-        const rect = canvas.getBoundingClientRect();
-        let dest:glm.vec2 = glm.vec2.fromValues(e.clientX-rect.left, HEIGHT-(e.clientY-rect.top));
-        let rayDir = glm.vec2.normalize(wv, glm.vec2.sub(dest, dest, rayO))
-        let endPoint = glm.vec2.multiply(wv, rayDir, glm.vec2.fromValues(WIDTH*HEIGHT, WIDTH*HEIGHT));
-        rays.push([WIDTH/2, 0, cTime/1000, endPoint[0], endPoint[1], cTime/1000]);
+    async function shootRay(e:MouseEvent) {
+        if(go){
+            go = false;
+            let wv = glm.vec2.fromValues(0, 0);
+            let rayO:glm.vec2 = glm.vec2.fromValues(WIDTH/2, 0);
+            const rect = canvas.getBoundingClientRect();
+            let dest:glm.vec2 = glm.vec2.fromValues(e.clientX-rect.left, HEIGHT-(e.clientY-rect.top));
+            let rayDir = glm.vec2.normalize(wv, glm.vec2.sub(dest, dest, rayO))
+            let endPoint = glm.vec2.multiply(wv, rayDir, glm.vec2.fromValues(WIDTH*HEIGHT, WIDTH*HEIGHT));
+            rays.push([WIDTH/2, 0, cTime/1000, endPoint[0], endPoint[1], cTime/1000]);
 
-        var minT:number = Number.MAX_VALUE;
-        var minIdx:number = -1;
+            var minT:number = Number.MAX_VALUE;
+            var minIdx:number = -1;
 
-        // let fakePositions = [[400, 500]]
-        // rayDir = glm.vec2.fromValues(0, 1);
-        for(let i = 0; i < positions.length; i++){
-            
-            let C:glm.vec2 = glm.vec2.fromValues(positions[i][0], positions[i][1]);
-            let t0 = rayCircle(rayO, rayDir, C);
-            
-            
-            if(t0 < minT){
-                minT = t0;
-                minIdx = i;
+            // let fakePositions = [[400, 500]]
+            // rayDir = glm.vec2.fromValues(0, 1);
+            for(let i = 0; i < positions.length; i++){
+                selectedBall = i;
+                
+                let C:glm.vec2 = glm.vec2.fromValues(positions[i][0], positions[i][1]);
+                let t0 = rayCircle(rayO, rayDir, C);
+                
+                if(t0 < minT){
+                    minT = t0;
+                    minIdx = i;
+                }
+                
+                await genPromise();
             }
-            
+            console.log("minimum hit", minIdx, minT);
+            selectedBall = -1;
+            if(minIdx >= 0) {
+                positions = positions.filter((v, i)=>i!=minIdx);
+                velocities = velocities.filter((v, i)=>i!=minIdx);
+            }
+            go = true;
             
         }
-        console.log("minimum hit", minIdx, minT);
-        if(minIdx >= 0) {
-            positions = positions.filter((v, i)=>i!=minIdx);
-            velocities = velocities.filter((v, i)=>i!=minIdx);
-        }
-
-
         //rays.push([WIDTH/2, 0, cTime/1000, WIDTH/2, HEIGHT/2, cTime/1000]);
         //rays = [];
         //rays.push([0.0, 0.0, cTime/1000.0, WIDTH, HEIGHT, cTime/1000.0]);
@@ -254,7 +256,6 @@ async function main() {
     canvas.addEventListener("click", shootRay, false)
     canvas.addEventListener("keydown", printPos, false)
 
-    let frameNumber = 0;
     let lastSecond = 0;
 
     positions.push([0, 0]);
@@ -265,33 +266,37 @@ async function main() {
         cTime = currentTime;
         deltaTime = (currentTime-lastTime)/1000.0;
         lastTime = currentTime;
-        if(!go){requestAnimationFrame(draw); return;}
+        //if(!go){requestAnimationFrame(draw); return;}
         //positions[0] = [mouseX, HEIGHT-mouseY];
         
 //update velcities and positions for each ball
-        for(let i = 0; i < positions.length; i++) {
-            positions[i][1] += velocities[i] * deltaTime;
+        if(go){
+            
+            for(let i = 0; i < positions.length; i++) {
+                positions[i][1] += velocities[i] * deltaTime;
+            }
+    //spawn meteors every second
+            let thisSecond = Math.floor(currentTime/1000);
+            if(thisSecond != lastSecond){
+                spawnMeteor();
+                lastSecond = thisSecond;
+            }
+    //remove meteors that go too far
+            velocities = velocities.filter((v, i) => positions[i][1]>0);
+            positions = positions.filter((v, i) => v[1]>0);
+            rays = rays.filter((v)=> ((v[2]+0.9) > (currentTime/1000.0)));
         }
-//spawn meteors every second
-        let thisSecond = Math.floor(currentTime/1000);
-        if(thisSecond != lastSecond){
-            spawnMeteor();
-            lastSecond = thisSecond;
-        }
-//remove meteors that go too far
-        velocities = velocities.filter((v, i) => positions[i][1]>0);
-        positions = positions.filter((v, i) => v[1]>0);
-        rays = rays.filter((v)=> ((v[2]+0.9) > (currentTime/1000.0)));
 
 
-        frameNumber++;
-        
         
         gl.clearColor(0.1, 0.1, 0.1, 1.0);
         gl.clear(gl.COLOR_BUFFER_BIT);
 
 
+//draw balls
         ballShader.use(gl);
+        console.log("selected ball: ", selectedBall);
+        gl.uniform1i(selectedBallLoc, selectedBall);
         
         gl.uniform1f(widthLoc, WIDTH);
         gl.uniform1f(heightLoc, HEIGHT);
@@ -303,6 +308,7 @@ async function main() {
         gl.bindVertexArray(null);
         
 
+//draw rays
         rayShader.use(gl);
         
         gl.uniform1f(rayWidthLoc, WIDTH);
@@ -310,8 +316,6 @@ async function main() {
         let currTimeLoc = rayShader.getULoc(gl, "currTime")
         gl.uniform1f(currTimeLoc, cTime/1000.0);
         
-
-
         gl.bindVertexArray(rayVAO);
         gl.bindBuffer(gl.ARRAY_BUFFER, rayVBO);
         gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(rays.flat()), gl.STATIC_DRAW); 
