@@ -1,16 +1,36 @@
 <!DOCTYPE html>
 <script>var exports = {};</script>
 <script src="main.js"></script>
-Stuff:<br>
+
+
+<style>
+    .column {
+  float: left;
+  width: 50%;
+}
+
+/* Clear floats after the columns */
+.row:after {
+  content: "";
+  display: table;
+  clear: both;
+}
+</style>
 <body>
-    <canvas tabindex='1' id="glCanvas" width="1000" height="800"></canvas>
-    <p>Mode: <span id="modeText"></span></p>
-    <p>Steps:<span id="stepsText"></span></p>
-    <p>Min Ray Hit Distance:<span id="minT"></span></p>
-    <p>Min Ray Hit Ball:<span id="minI"></span></p>
-    <button id="stepButton">Step</button>
-    <button id="nextMode">Next Mode</button>
-    <button id="prevMode">Prev Mode</button>
+    <div class="row">
+        <div class="column">
+            <canvas tabindex='1' id="glCanvas" width="1000" height="800"></canvas>
+        </div>
+        <div class="column">
+            <p>Mode: <span id="modeText"></span></p>
+            <p>Steps:<span id="stepsText"></span></p>
+            <p>Min Ray Hit Distance:<span id="minT"></span></p>
+            <p>Min Ray Hit Ball:<span id="minI"></span></p>
+            <button id="stepButton">Step</button>
+            <button id="nextMode">Next Mode</button>
+            <button id="prevMode">Prev Mode</button>
+        </div>
+    </div>
 </body>
 
   

@@ -295,16 +295,20 @@ function main() {
 
     let shootFunctions = [shootRayBrute, shootRayGrid, shootRayQuad, shootRayKD];
     function nextMode() {
-        currMethod = (currMethod+1)%neighborMethods.length;
-        canvas.removeEventListener("click", shootFunction, false)
-        shootFunction = shootFunctions[currMethod];
-        canvas.addEventListener("click", shootFunction, false)
+        if(go){
+            currMethod = (currMethod+1)%neighborMethods.length;
+            canvas.removeEventListener("click", shootFunction, false)
+            shootFunction = shootFunctions[currMethod];
+            canvas.addEventListener("click", shootFunction, false)
+        }
     }
     function prevMode() {
-        currMethod = (currMethod-1)%neighborMethods.length;
-        canvas.removeEventListener("click", shootFunction, false)
-        shootFunction = shootFunctions[currMethod];
-        canvas.addEventListener("click", shootFunction, false)
+        if(go) {
+            currMethod = (currMethod-1)%neighborMethods.length;
+            canvas.removeEventListener("click", shootFunction, false)
+            shootFunction = shootFunctions[currMethod];
+            canvas.addEventListener("click", shootFunction, false)
+        }
     }
     
     shootFunction = shootFunctions[currMethod];
@@ -349,6 +353,8 @@ function main() {
     //spawn meteors every second
             let thisSecond = Math.floor(currentTime/1000);
             if(thisSecond != lastSecond){
+                spawnMeteor();
+                spawnMeteor();
                 spawnMeteor();
                 lastSecond = thisSecond;
             }
