@@ -3,6 +3,7 @@
 import * as glm from "gl-matrix" 
 import {Shader} from "./shader"
 import * as shaders from "./shader"
+import { kdNode } from "./kdtree";
 
 let i = 0
 let value = 0.0
@@ -230,9 +231,12 @@ function main() {
     }
 
     async function shootRayBrute(e:MouseEvent) {
+
         console.log("shoot rayBasic");
         if(go){
             go = false;
+            
+
             let wv = glm.vec2.fromValues(0, 0);
             let rayO:glm.vec2 = glm.vec2.fromValues(WIDTH/2, 0);
             const rect = canvas.getBoundingClientRect();
@@ -337,6 +341,20 @@ function main() {
     velocities.push(0);
     //rays.push([0.0, 0.0, lastTime/1000, WIDTH, HEIGHT, lastTime/1000]);
 
+    spawnMeteor()
+    spawnMeteor()
+    spawnMeteor()
+    spawnMeteor()
+    spawnMeteor()
+    spawnMeteor()
+    spawnMeteor()
+    spawnMeteor()
+    spawnMeteor()
+    spawnMeteor()
+    console.log("positions:", positions)
+    console.log("totalList: ", [...Array(positions.length).keys()])
+    let kd = new kdNode(positions, 0, BALL_RADIUS)
+    go = false;
     function draw(currentTime:number){
         cTime = currentTime;
         deltaTime = (currentTime-lastTime)/1000.0;
