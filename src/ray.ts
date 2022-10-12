@@ -12,6 +12,12 @@ export class AABB {
     toString() {
         return `(${this.min[0]},${this.min[1]}), (${this.max[0]},${this.max[1]})`
     }
+    contains(p:glm.vec2):boolean {
+        return p[0] < this.max[0] &&
+        p[1] < this.max[1] &&
+        p[0] > this.min[0] &&
+        p[1] > this.min[1]
+    }
   }
 
   

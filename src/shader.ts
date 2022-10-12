@@ -127,3 +127,30 @@ void main() {
     outColor = vec4(f, f, f, 1.0);
 }
 `;
+
+export var partitionVertSource = `#version 300 es
+in vec3 aPos;
+uniform float width;
+uniform float height;
+
+out float red;
+
+void main() {
+    red = aPos.z;
+    vec2 normalized = ((aPos.xy/vec2(width, height))-vec2(0.5))*2.0;
+    gl_Position = vec4(normalized, 0, 1);
+}
+`;
+
+
+ 
+export var partitionFragSource = `#version 300 es
+precision mediump float;
+out vec4 outColor;
+
+in float red;
+
+void main() {
+    outColor = vec4(red, 0.0, 0.0, 1.0);
+}
+`;

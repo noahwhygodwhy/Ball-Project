@@ -5,6 +5,7 @@ import {Shader} from "./shader"
 import * as shaders from "./shader"
 import { kdNode } from "./kdtree";
 import { AABB, Ray } from "./ray"
+import { drawable } from "./drawable";
 
 let i = 0
 let value = 0.0
@@ -16,26 +17,31 @@ export const SPACE_HEIGHT:number = 800;
 
 var mouseX = 0;
 var mouseY = 0
-
+var partitioning:drawable|null = null
 var neighborMethods = ["Brute Force", "Uniform Grid", "Quad Tree", "KD Tree"];
 var currMethod = 0;
 var shootFunction:(this: HTMLCanvasElement, ev: MouseEvent) => any;
 
+var selectedBall = -1;
 
 
-var resolveStep:(value: number | PromiseLike<number>) => void;
+export var resolveStep:(value: number | PromiseLike<number>) => void;
 
 function step(event:any) {
     resolveStep(0);
 }
 
-async function genPromise(){
+export async function genPromise(){
     await new Promise((resolve:(value: number | PromiseLike<number>) => void) => resolveStep = resolve);
 }
 
 const clamp = (num:number, min:number, max:number) => Math.min(Math.max(num, min), max);
 
 
+
+export function selectBall(i:number){
+    selectedBall = i
+}
 
 function main() {
     document.getElementById("stepButton")?.addEventListener("click", step)
@@ -61,10 +67,11 @@ function main() {
 
     gl =  tempGl
 
-    let activeBall = -1;
+    // let activeBall = -1;
 
     let ballShader = new Shader(gl, shaders.ballVertSource, shaders.ballFragSource);
     let rayShader = new Shader(gl, shaders.rayVertSource, shaders.rayFragSource);
+    let partitioningShader = new Shader(gl, shaders.partitionVertSource, shaders.partitionFragSource);
 
 
 
@@ -146,7 +153,6 @@ function main() {
 
 
     let go = true;
-    let selectedBall = -1;
     // function selectBall(event:MouseEvent){
     //     for(let i = 0; i < velocities.length; i++) {
     //         let oidx = i*2;
@@ -253,25 +259,33 @@ function main() {
     }
     
     async function shootRayKD(e:MouseEvent) {
-        go = false
-        let theTree:kdNode = new kdNode(positions, Array.from(Array(positions.length).keys()))
-        console.log("made kd tree")
-        console.log(theTree.xXx_to$tring_xXx())
+        if(go) {
+            go = false
+            
+            let parentAABB:AABB = new AABB(0, 0, SPACE_WIDTH, SPACE_HEIGHT)
+            let theTree:kdNode = new kdNode(positions, Array.from(Array(positions.length).keys()), parentAABB)
+            partitioning = theTree
+            console.log("made kd tree")
+            console.log(theTree.xXx_to$tring_xXx())
 
-        let theRay:Ray = getRayFromEvent(e);
-        console.log(theRay.toString())
-        let parentAABB:AABB = new AABB(0, 0, SPACE_WIDTH, SPACE_HEIGHT)
-        let hitResult = theTree.intersectTest(theRay,positions, parentAABB);
-        if(hitResult) {
-            selectedBall = hitResult.idx
-            // positions = positions.filter((v, i)=>i!=hitResult.idx);
-            // velocities = velocities.filter((v, i)=>i!=hitResult.idx);
+            let theRay:Ray = getRayFromEvent(e);
+            console.log(theRay.toString())
+            console.log("awaiting")
+            let hitResult = await theTree.intersectTest(theRay,positions, parentAABB);
+            console.log("awaited")
+            if(hitResult) {
+                selectedBall = hitResult.idx
+                // positions = positions.filter((v, i)=>i!=hitResult.idx);
+                // velocities = velocities.filter((v, i)=>i!=hitResult.idx);
+            }
+            
+            // console.log("shoot ray kd");
+            /** 
+             * From list of points, create kd tree
+             * use kd tree to perform ray/circle intersection
+             */ 
+            go = true
         }
-        // console.log("shoot ray kd");
-        /** 
-         * From list of points, create kd tree
-         * use kd tree to perform ray/circle intersection
-         */
     }
 
     let shootFunctions = [shootRayBrute, shootRayGrid, shootRayQuad, shootRayKD];
@@ -346,15 +360,20 @@ function main() {
             rays = rays.filter((v)=> ((v[2]+0.9) > (currentTime/1000.0)));
         }
 
-
-        
         gl.clearColor(0.1, 0.1, 0.1, 1.0);
         gl.clear(gl.COLOR_BUFFER_BIT);
 
 
+        if(partitioning){
+            partitioning.draw(partitioningShader, gl);
+        }
+        
+
+
+
 //draw balls
         ballShader.use(gl);
-        console.log("selected ball: ", selectedBall);
+        // console.log("selected ball: ", selectedBall);
         gl.uniform1i(selectedBallLoc, selectedBall);
         
         gl.uniform1f(widthLoc, SPACE_WIDTH);
