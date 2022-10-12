@@ -15,5 +15,8 @@ module.exports = {
             keepNames:true
           }
         })
-      ]
+      ],
+    optimization: {
+        minimize: false
+    },
 };

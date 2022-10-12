@@ -1,0 +1,11 @@
+shootray kd
+kd tree display
+shootray quad
+quad tree display
+shootray grid
+grid display
+UX/UI
+    Toggle between full auto and show process
+        full auto should probably just use bruteforce right?
+        
+    pretier display in general

@@ -4,16 +4,15 @@ import * as glm from "gl-matrix"
 import {Shader} from "./shader"
 import * as shaders from "./shader"
 import { kdNode } from "./kdtree";
+import { AABB, Ray } from "./ray"
 
 let i = 0
 let value = 0.0
 let gl:WebGL2RenderingContext
 let program:WebGLProgram|null
-const BALL_RADIUS:number = 10;
-
-
-const WIDTH:number = 800;
-const HEIGHT:number = 800;
+export const BALL_RADIUS:number = 10;
+export const SPACE_WIDTH:number = 800;
+export const SPACE_HEIGHT:number = 800;
 
 var mouseX = 0;
 var mouseY = 0
@@ -36,64 +35,14 @@ async function genPromise(){
 
 const clamp = (num:number, min:number, max:number) => Math.min(Math.max(num, min), max);
 
-// document.addEventListener("dragover", function(e){
-//     e = e || window.event;
-//     var dragX = e.pageX
-//     var dragY = e.pageY;
-
-// }, false);
-
-
-function quadratic(a:number, b:number, c:number):Array<number>{
-    let insideRoot = (b*b) - (4*a*c)
-    if(insideRoot <0){
-        return [Number.MAX_VALUE, Number.MAX_VALUE];
-    }
-    let t0 = (-b - Math.sqrt(insideRoot))/(2*a);
-    let t1 = (-b + Math.sqrt(insideRoot))/(2*a);
-    return [t0, t1];
-
-
-}
-function rayCircle(rayO:glm.vec2, rayD:glm.vec2, circleOrigin:glm.vec2):number {
-
-    let wv:glm.vec2 = glm.vec2.fromValues(0, 0);
-
-	let L = glm.vec2.sub(wv, rayO, circleOrigin);
-	let a = glm.vec2.dot(rayD, rayD);
-	let b = 2.0 * glm.vec2.dot(rayD, L);
-	let c = glm.vec2.dot(L, L) - (BALL_RADIUS*BALL_RADIUS);
-    //console.log(a, b, c)
-
-
-	let t0:number, t1:number;
-	let ts:Array<number> = quadratic(a, b, c);
-    t0 = ts[0];
-    t1 = ts[1];
-    //console.log(t0, t1);
-
-	if (t0 > t1) {
-        t0 = ts[1];
-        t1 = ts[0];
-	}
-	if (t0 < 0) {
-		t0 = t1;
-		if (t0 < 0) {
-			return Number.MAX_VALUE
-		}
-	}
-
-    return t0;
-}
-
 
 
 function main() {
     document.getElementById("stepButton")?.addEventListener("click", step)
     
     const canvas = document.querySelector("#glCanvas") as HTMLCanvasElement;
-    canvas.width = WIDTH;
-    canvas.height = HEIGHT;
+    canvas.width = SPACE_WIDTH;
+    canvas.height = SPACE_HEIGHT;
    
     window.addEventListener('mousemove', (e:MouseEvent) => {
         const rect = canvas.getBoundingClientRect()
@@ -179,8 +128,8 @@ function main() {
     let radiusLoc = ballShader.getULoc(gl, "ballRadius")
     let selectedBallLoc = ballShader.getULoc(gl, "selectedBall")
 
-    gl.uniform1f(widthLoc, WIDTH);
-    gl.uniform1f(heightLoc, HEIGHT);
+    gl.uniform1f(widthLoc, SPACE_WIDTH);
+    gl.uniform1f(heightLoc, SPACE_HEIGHT);
     gl.uniform1f(radiusLoc, BALL_RADIUS);
 
     rayShader.use(gl);
@@ -206,7 +155,7 @@ function main() {
     //     let pos:glm.vec2 =  
     // }
     function spawnMeteor(){
-        positions.push([Math.random()*WIDTH, HEIGHT])
+        positions.push([Math.random()*SPACE_WIDTH, SPACE_HEIGHT])
         velocities.push(-Math.random()*50)
     }
     
@@ -230,6 +179,18 @@ function main() {
         }
     }
 
+    function getRayFromEvent(e:MouseEvent):Ray{
+        let wv = glm.vec2.fromValues(0, 0);
+        let rayO:glm.vec2 = glm.vec2.fromValues(SPACE_WIDTH/2, 0);
+        const rect = canvas.getBoundingClientRect();
+        let dest:glm.vec2 = glm.vec2.fromValues(e.clientX-rect.left, SPACE_HEIGHT-(e.clientY-rect.top));
+        let rayDir = glm.vec2.normalize(wv, glm.vec2.sub(dest, dest, rayO))
+        let endPoint = glm.vec2.multiply(wv, rayDir, glm.vec2.fromValues(SPACE_WIDTH*SPACE_HEIGHT, SPACE_WIDTH*SPACE_HEIGHT));
+        rays.push([SPACE_WIDTH/2, 0, cTime/1000, endPoint[0], endPoint[1], cTime/1000]);
+        let theRay:Ray = new Ray(rayO, rayDir);
+        return theRay
+    }
+
     async function shootRayBrute(e:MouseEvent) {
 
         console.log("shoot rayBasic");
@@ -237,13 +198,14 @@ function main() {
             go = false;
             
 
-            let wv = glm.vec2.fromValues(0, 0);
-            let rayO:glm.vec2 = glm.vec2.fromValues(WIDTH/2, 0);
-            const rect = canvas.getBoundingClientRect();
-            let dest:glm.vec2 = glm.vec2.fromValues(e.clientX-rect.left, HEIGHT-(e.clientY-rect.top));
-            let rayDir = glm.vec2.normalize(wv, glm.vec2.sub(dest, dest, rayO))
-            let endPoint = glm.vec2.multiply(wv, rayDir, glm.vec2.fromValues(WIDTH*HEIGHT, WIDTH*HEIGHT));
-            rays.push([WIDTH/2, 0, cTime/1000, endPoint[0], endPoint[1], cTime/1000]);
+            // let wv = glm.vec2.fromValues(0, 0);
+            // let rayO:glm.vec2 = glm.vec2.fromValues(WIDTH/2, 0);
+            // const rect = canvas.getBoundingClientRect();
+            // let dest:glm.vec2 = glm.vec2.fromValues(e.clientX-rect.left, HEIGHT-(e.clientY-rect.top));
+            // let rayDir = glm.vec2.normalize(wv, glm.vec2.sub(dest, dest, rayO))
+            // let endPoint = glm.vec2.multiply(wv, rayDir, glm.vec2.fromValues(WIDTH*HEIGHT, WIDTH*HEIGHT));
+            // rays.push([WIDTH/2, 0, cTime/1000, endPoint[0], endPoint[1], cTime/1000]);
+            let theRay:Ray = getRayFromEvent(e)
 
             minT = Number.MAX_VALUE;
             minIdx = -1;
@@ -253,10 +215,11 @@ function main() {
             for(let i = 0; i < positions.length; i++){
                 currSteps++;
                 selectedBall = i;
-                let C:glm.vec2 = glm.vec2.fromValues(positions[i][0], positions[i][1]);
-                let t0 = rayCircle(rayO, rayDir, C);
-                if(t0 < minT){
-                    minT = t0;
+
+                let hitResult = theRay.intersectCircle(glm.vec2.fromValues(positions[i][0], positions[i][1]))
+
+                if(hitResult.hit && hitResult.minT < minT){
+                    minT = hitResult.minT;
                     minIdx = i;
                 }
                 
@@ -290,7 +253,21 @@ function main() {
     }
     
     async function shootRayKD(e:MouseEvent) {
-        console.log("shoot ray quad");
+        go = false
+        let theTree:kdNode = new kdNode(positions, Array.from(Array(positions.length).keys()))
+        console.log("made kd tree")
+        console.log(theTree.xXx_to$tring_xXx())
+
+        let theRay:Ray = getRayFromEvent(e);
+        console.log(theRay.toString())
+        let parentAABB:AABB = new AABB(0, 0, SPACE_WIDTH, SPACE_HEIGHT)
+        let hitResult = theTree.intersectTest(theRay,positions, parentAABB);
+        if(hitResult) {
+            selectedBall = hitResult.idx
+            // positions = positions.filter((v, i)=>i!=hitResult.idx);
+            // velocities = velocities.filter((v, i)=>i!=hitResult.idx);
+        }
+        // console.log("shoot ray kd");
         /** 
          * From list of points, create kd tree
          * use kd tree to perform ray/circle intersection
@@ -339,32 +316,19 @@ function main() {
 
     positions.push([0, 0]);
     velocities.push(0);
-    //rays.push([0.0, 0.0, lastTime/1000, WIDTH, HEIGHT, lastTime/1000]);
-
-    spawnMeteor()
-    spawnMeteor()
-    spawnMeteor()
-    spawnMeteor()
-    spawnMeteor()
-    spawnMeteor()
-    spawnMeteor()
-    spawnMeteor()
-    spawnMeteor()
-    spawnMeteor()
-    console.log("positions:", positions)
-    console.log("totalList: ", [...Array(positions.length).keys()])
-    let kd = new kdNode(positions, 0, BALL_RADIUS)
-    go = false;
+    
     function draw(currentTime:number){
+        updateText()
         cTime = currentTime;
         deltaTime = (currentTime-lastTime)/1000.0;
         lastTime = currentTime;
         //if(!go){requestAnimationFrame(draw); return;}
         //positions[0] = [mouseX, HEIGHT-mouseY];
-        
-//update velcities and positions for each ball
+
+
+//if it's not paused
         if(go){
-            
+    //update velcities and positions for each ball
             for(let i = 0; i < positions.length; i++) {
                 positions[i][1] += velocities[i] * deltaTime;
             }
@@ -393,21 +357,20 @@ function main() {
         console.log("selected ball: ", selectedBall);
         gl.uniform1i(selectedBallLoc, selectedBall);
         
-        gl.uniform1f(widthLoc, WIDTH);
-        gl.uniform1f(heightLoc, HEIGHT);
+        gl.uniform1f(widthLoc, SPACE_WIDTH);
+        gl.uniform1f(heightLoc, SPACE_HEIGHT);
         gl.bindVertexArray(ballVAO);
         gl.bindBuffer(gl.ARRAY_BUFFER, ballVBO);
         gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions.flat()), gl.STATIC_DRAW);        
         gl.drawArrays(gl.POINTS, 0, velocities.length);
         gl.bindBuffer(gl.ARRAY_BUFFER, null);
         gl.bindVertexArray(null);
-        
-
+          
 //draw rays
         rayShader.use(gl);
         
-        gl.uniform1f(rayWidthLoc, WIDTH);
-        gl.uniform1f(rayHeightLoc, HEIGHT);
+        gl.uniform1f(rayWidthLoc, SPACE_WIDTH);
+        gl.uniform1f(rayHeightLoc, SPACE_HEIGHT);
         let currTimeLoc = rayShader.getULoc(gl, "currTime")
         gl.uniform1f(currTimeLoc, cTime/1000.0);
         
