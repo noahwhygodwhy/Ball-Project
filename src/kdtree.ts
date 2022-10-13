@@ -13,6 +13,20 @@ const SQUARE_RED = 0.1
 
 var drawList:Array<{n:kdNode, g:boolean}> = []; //n for node, g for greater 
 
+async function rayHitListOfShapes(indexes:Array<number>, ray:Ray, balls:Array<Array<number>>): Promise<{hit:boolean, minT:number, idx:number}> {
+    let minResult: {hit:boolean, minT:number, idx:number} = {hit:false, minT:Infinity, idx:-1};
+    await indexes.forEach(async (v)=> {
+        selectBall(v)
+        await genPromise()
+        let thisBall = glm.vec2.fromValues(balls[v][0], balls[v][1])
+        let hr = ray.intersectCircle(thisBall);
+        if (hr.hit && hr.minT < minResult.minT) {
+            minResult = {hit:true, minT:hr.minT, idx:v}
+        }
+    })
+    return minResult
+}
+
 export class kdNode implements drawable{
     value:number = 0
     axis:number = -1
@@ -200,11 +214,17 @@ export class kdNode implements drawable{
 
 
 
-
     async intersectTest(ray:Ray, balls:Array<Array<number>>, g:boolean = false): Promise<{hit:boolean, minT:number, idx:number}> {
-        let {hit, tMin, tMax} = ray.intersectAABB(this.aabb)
-        if(!hit) {
-            return {hit:false, minT:Infinity, idx:-1};
+
+        // let toReturn = {hit:false, minT:Infinity, idx:-1};
+        
+        // console.log("this.aabb:", this.aabb)
+        // console.log("hit:", hit)
+
+
+        if(!ray.intersectAABB(this.aabb).hit) {
+            drawList.pop()
+            return {hit:false, minT:Infinity, idx:-1}
         }
         // let point:glm.vec2;
 
@@ -217,132 +237,180 @@ export class kdNode implements drawable{
         // }
 
         
-        let firstChild:kdNode
-        let lastChild:kdNode
+        let firstChild:kdNode|null = null
+        let lastChild:kdNode|null = null
+        let fp:boolean = false
+        let lp:boolean = false
+        console.log("this:", this)
 
         if(ray.origin[this.axis] < this.value) {//if it's on the lesser side
             if(ray.direction[this.axis] > 0) {//but it might go accross {
-
+                console.log("case 1")
+                fp = false
+                lp = true
+                firstChild = this.lesserChild
+                lastChild = this.greaterChild
             }
             else { //it doesn't go across, lesser only
-
+                console.log("case 2")
+                lp = false
+                firstChild = this.lesserChild
+                //left, then right
             }
         } else { //it's on the greater side
             if(ray.direction[this.axis] < 0) {//but it might go accross {
-
+                
+                console.log("case 3")
+                firstChild = this.greaterChild
+                lastChild = this.lesserChild
+                fp = true
+                lp = false
+                //right then center then left
             }
-            else { //it doesn't go across, lesser only
-
+            else { //it doesn't go across, greater only
+                console.log("case 4")
+                fp = true
+                firstChild = this.greaterChild
+                //right then center
             }
         }
+        console.log("firstChild", firstChild)
+        console.log("lastChild", lastChild)
+
+        await genPromise()//TODO: move this back up?
+        if(firstChild){
+
+            drawList.push({n:firstChild, g:fp})
+            let hitResult = await firstChild.intersectTest(ray, balls, fp)
+            drawList.pop()
+            if(hitResult && hitResult.hit){
+                return hitResult
+            }
+        }
+
+        let hitResult = await rayHitListOfShapes(this.myList, ray, balls);
+        if(hitResult && hitResult.hit){
+            return hitResult
+        }
+        if(lastChild) {
+            drawList.push({n:lastChild, g:lp})
+            let hitResult = await lastChild.intersectTest(ray, balls, lp)
+            drawList.pop()
+            if(hitResult && hitResult.hit){
+                drawList.pop()
+                return hitResult
+            }
+        }
+        return {hit:false, minT:Infinity, idx:-1}
+
     }
     
 
 
-    async intersectTestOld(ray:Ray, balls:Array<Array<number>>, parentAABB:AABB, g:boolean = false, parentT:number = Number.POSITIVE_INFINITY): Promise<{hit:boolean, minT:number, idx:number}> {
-        drawList.push({n:this, g:g})
-        console.log("intersect test")
-        console.log(drawList)
+                // async intersectTestOld(ray:Ray, balls:Array<Array<number>>, parentAABB:AABB, g:boolean = false, parentT:number = Number.POSITIVE_INFINITY): Promise<{hit:boolean, minT:number, idx:number}> {
+                //     drawList.push({n:this, g:g})
+                //     console.log("intersect test")
+                //     console.log(drawList)
 
-        await genPromise()
-        
-        
-        let toReturn = {hit:false, minT:parentT, idx:-1};
-        
-        let lesserAABB:AABB;
-        let greaterAABB:AABB;
+                //     await genPromise()
+                    
+                    
+                //     let toReturn = {hit:false, minT:parentT, idx:-1};
+                    
+                //     let lesserAABB:AABB;
+                //     let greaterAABB:AABB;
 
-        if(this.axis == 0) {//axis is 0 (x)
-            lesserAABB = new AABB(parentAABB.min[0], parentAABB.min[1], this.value, parentAABB.max[1])
-            greaterAABB = new AABB(this.value, parentAABB.min[1], parentAABB.max[0], parentAABB.max[1])
-        } else { //axis is 1 (y)
-            lesserAABB = new AABB(parentAABB.min[0], parentAABB.min[1], parentAABB.max[0], this.value)
-            greaterAABB = new AABB(parentAABB.min[0], this.value, parentAABB.max[0], parentAABB.max[1])
-        }
+                //     if(this.axis == 0) {//axis is 0 (x)
+                //         lesserAABB = new AABB(parentAABB.min[0], parentAABB.min[1], this.value, parentAABB.max[1])
+                //         greaterAABB = new AABB(this.value, parentAABB.min[1], parentAABB.max[0], parentAABB.max[1])
+                //     } else { //axis is 1 (y)
+                //         lesserAABB = new AABB(parentAABB.min[0], parentAABB.min[1], parentAABB.max[0], this.value)
+                //         greaterAABB = new AABB(parentAABB.min[0], this.value, parentAABB.max[0], parentAABB.max[1])
+                //     }
 
-        let firstAABB:AABB = greaterAABB
-        let firstChild = this.greaterChild
-        let lastAABB:AABB = lesserAABB
-        let lastChild = this.lesserChild
-        if(ray.direction[this.axis] > 0) {
-            console.log("lesser to greater")
-            firstAABB = lesserAABB
-            firstChild = this.lesserChild
-            lastAABB = greaterAABB
-            lastChild = this.greaterChild
-        } else {
-            console.log("greater to lesser")
-        }
+                //     let firstAABB:AABB = greaterAABB
+                //     let firstChild = this.greaterChild
+                //     let lastAABB:AABB = lesserAABB
+                //     let lastChild = this.lesserChild
+                //     if(ray.direction[this.axis] > 0) {
+                //         console.log("lesser to greater")
+                //         firstAABB = lesserAABB
+                //         firstChild = this.lesserChild
+                //         lastAABB = greaterAABB
+                //         lastChild = this.greaterChild
+                //     } else {
+                //         console.log("greater to lesser")
+                //     }
 
-        console.log("first aabb  " + firstAABB.toString())
-        console.log("last aabb  " + lastAABB.toString())
-        
-        let hitLesser = ray.intersectAABB(firstAABB)
-        if (hitLesser && firstChild) //hit lesser side
-        {
-            console.log("going first", firstChild.cleanString())
-            let hitResult = await firstChild.intersectTest(ray, balls, firstAABB, false, toReturn.minT)
-            if(hitResult.hit && hitResult.minT < toReturn.minT) {
-                toReturn = hitResult
-            }
-        }
-        if (!toReturn.hit) { //hit this node's
-            console.log("trying node list")
+                //     console.log("first aabb  " + firstAABB.toString())
+                //     console.log("last aabb  " + lastAABB.toString())
+                    
+                //     let hitLesser = ray.intersectAABB(firstAABB)
+                //     if (hitLesser && firstChild) //hit lesser side
+                //     {
+                //         console.log("going first", firstChild.cleanString())
+                //         let hitResult = await firstChild.intersectTest(ray, balls, firstAABB, false, toReturn.minT)
+                //         if(hitResult.hit && hitResult.minT < toReturn.minT) {
+                //             toReturn = hitResult
+                //         }
+                //     }
+                //     if (!toReturn.hit) { //hit this node's
+                //         console.log("trying node list")
 
-            await this.myList.forEach(async (b, i)=> {
-                selectBall(b);
-                await genPromise()
-                let pos = glm.vec2.fromValues(balls[b][0], balls[b][1]);
-                let hitResult = ray.intersectCircle(pos);
-                if(hitResult.hit && hitResult.minT < toReturn.minT) {
-                    toReturn = {hit:hitResult.hit, minT:hitResult.minT, idx:b}
-                    // toReturn.hit = true;
-                    // toReturn.minT = hitResult.minT
-                    // toReturn.idx = i
-                }
-            });
-        }
+                //         await this.myList.forEach(async (b, i)=> {
+                //             selectBall(b);
+                //             await genPromise()
+                //             let pos = glm.vec2.fromValues(balls[b][0], balls[b][1]);
+                //             let hitResult = ray.intersectCircle(pos);
+                //             if(hitResult.hit && hitResult.minT < toReturn.minT) {
+                //                 toReturn = {hit:hitResult.hit, minT:hitResult.minT, idx:b}
+                //                 // toReturn.hit = true;
+                //                 // toReturn.minT = hitResult.minT
+                //                 // toReturn.idx = i
+                //             }
+                //         });
+                //     }
 
-        let hitGreater = ray.intersectAABB(lastAABB)
-        if(hitGreater && lastChild && !toReturn.hit){//hit the greater side
-            console.log("going last"+ lastChild.cleanString())
-            let hitResult = await lastChild.intersectTest(ray, balls, lastAABB, true, toReturn.minT)
-            if(hitResult.hit && hitResult.minT < toReturn.minT){
-                toReturn = hitResult
-            }
-        }
-        drawList.pop()
-
-
-        return toReturn
-        
+                //     let hitGreater = ray.intersectAABB(lastAABB)
+                //     if(hitGreater && lastChild && !toReturn.hit){//hit the greater side
+                //         console.log("going last"+ lastChild.cleanString())
+                //         let hitResult = await lastChild.intersectTest(ray, balls, lastAABB, true, toReturn.minT)
+                //         if(hitResult.hit && hitResult.minT < toReturn.minT){
+                //             toReturn = hitResult
+                //         }
+                //     }
+                //     drawList.pop()
 
 
+                //     return toReturn
+                    
 
 
 
-        // if(this.lesserChild && hitLesser.tMin < toReturn.minT && hitLesser.tMin < hitGreater.tMin) {
-        //     let hitResult = this.lesserChild.intersectTest(ray, lesserAABB, toReturn.minT)
-        //     if (hitResult.hit && hitResult.minT < toReturn.minT)
-
-        //     if(hitGreater.tMin < toReturn.minT) {
-
-        //     }
-        // }
-        // else if(this.greaterChild && hitGreater.tMin < toReturn.minT) {
-
-        // }
-        
 
 
+                //     // if(this.lesserChild && hitLesser.tMin < toReturn.minT && hitLesser.tMin < hitGreater.tMin) {
+                //     //     let hitResult = this.lesserChild.intersectTest(ray, lesserAABB, toReturn.minT)
+                //     //     if (hitResult.hit && hitResult.minT < toReturn.minT)
 
-        // //ray hit both aabbs,
-        // //if it hits
-        // //  check if the t is lower than abMinimum t, if it is, recurse to that one, passing down the abMinimumT
-        
-        // return toReturn
+                //     //     if(hitGreater.tMin < toReturn.minT) {
 
-    }
+                //     //     }
+                //     // }
+                //     // else if(this.greaterChild && hitGreater.tMin < toReturn.minT) {
+
+                //     // }
+                    
+
+
+
+                //     // //ray hit both aabbs,
+                //     // //if it hits
+                //     // //  check if the t is lower than abMinimum t, if it is, recurse to that one, passing down the abMinimumT
+                    
+                //     // return toReturn
+
+                // }
     // stepForward(){
     //     this.step++
     // }

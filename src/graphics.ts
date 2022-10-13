@@ -192,7 +192,7 @@ function main() {
         let dest:glm.vec2 = glm.vec2.fromValues(e.clientX-rect.left, SPACE_HEIGHT-(e.clientY-rect.top));
         let rayDir = glm.vec2.normalize(wv, glm.vec2.sub(dest, dest, rayO))
         let endPoint = glm.vec2.multiply(wv, rayDir, glm.vec2.fromValues(SPACE_WIDTH*SPACE_HEIGHT, SPACE_WIDTH*SPACE_HEIGHT));
-        rays.push([SPACE_WIDTH/2, 0, cTime/1000, endPoint[0], endPoint[1], cTime/1000]);
+        rays.push([SPACE_WIDTH/2, -1, cTime/1000, endPoint[0], endPoint[1], cTime/1000]);
         let theRay:Ray = new Ray(rayO, rayDir);
         return theRay
     }
@@ -271,8 +271,8 @@ function main() {
             let theRay:Ray = getRayFromEvent(e);
             console.log(theRay.toString())
             console.log("awaiting")
-            let hitResult = await theTree.intersectTest(theRay,positions, parentAABB);
-            console.log("awaited")
+            let hitResult = await theTree.intersectTest(theRay,positions);
+            console.log("awaited", hitResult)
             if(hitResult) {
                 selectedBall = hitResult.idx
                 // positions = positions.filter((v, i)=>i!=hitResult.idx);
@@ -284,7 +284,7 @@ function main() {
              * From list of points, create kd tree
              * use kd tree to perform ray/circle intersection
              */ 
-            go = true
+            // go = true
         }
     }
 

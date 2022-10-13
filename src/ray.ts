@@ -13,10 +13,10 @@ export class AABB {
         return `(${this.min[0]},${this.min[1]}), (${this.max[0]},${this.max[1]})`
     }
     contains(p:glm.vec2):boolean {
-        return p[0] < this.max[0] &&
-        p[1] < this.max[1] &&
-        p[0] > this.min[0] &&
-        p[1] > this.min[1]
+        return p[0] <= this.max[0] &&
+        p[1] <= this.max[1] &&
+        p[0] >= this.min[0] &&
+        p[1] >= this.min[1]
     }
   }
 
@@ -72,6 +72,10 @@ export class Ray{
         // return t0;
     }
     intersectAABB(aabb:AABB): {hit:boolean, tMin:number, tMax:number} {
+        
+        if(aabb.contains(this.origin)){
+            return {hit:true, tMin:0, tMax:0}
+        }
 
         let wv:glm.vec2 = glm.vec2.fromValues(0.0, 0.0);
         let invD:glm.vec2 = glm.vec2.div(wv, glm.vec2.fromValues(1,1), this.direction);
