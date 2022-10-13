@@ -124,29 +124,34 @@ export class kdNode implements drawable{
 
         // let drawSquare:AABB = new AABB(0, 0, SPACE_WIDTH, SPACE_HEIGHT);
         let fullAABB = new AABB(0, 0, SPACE_WIDTH, SPACE_HEIGHT)
-        drawList.forEach((v, i) => {
-            let prevab:AABB = (drawList.at(i-1)?.n.aabb) ?? fullAABB;
-            
-            let start:Array<number> = []
-            let end:Array<number> = []
+        // drawList.forEach((v, i) => {
+        //     let prevab:AABB = (drawList.at(i-1)?.n.aabb) ?? fullAABB;
+        //     console.log(v)
+        //     console.log("prevaabb:", prevab)
+        //     let start:Array<number> = []
+        //     let end:Array<number> = []
 
-            if(v.n.axis == 0) {
-                start = [v.n.value, 0, LINE_RED]
-                end = [v.n.value, SPACE_HEIGHT, LINE_RED]
-            } else {
-                start = [0, v.n.value, LINE_RED]
-                end = [SPACE_WIDTH, v.n.value, LINE_RED]
-            }
-            start[0] = clamp(start[0], prevab.min[0], prevab.max[0])
-            end[0] = clamp(end[0], prevab.min[0], prevab.max[0])
+        //     if(v.n.axis == 0) {
+        //         start = [v.n.value, 0, LINE_RED]
+        //         end = [v.n.value, SPACE_HEIGHT, LINE_RED]
+        //     } else {
+        //         start = [0, v.n.value, LINE_RED]
+        //         end = [SPACE_WIDTH, v.n.value, LINE_RED]
+        //     }
 
-            start[1] = clamp(start[1], prevab.min[1], prevab.max[1])
-            end[1] = clamp(end[1], prevab.min[1], prevab.max[1])
+        //     // console.log("preclamp:", start, end)
+        //     start[0] = clamp(start[0], prevab.min[0], prevab.max[0])
+        //     end[0] = clamp(end[0], prevab.min[0], prevab.max[0])
 
-            vertices.push([start[0], start[1], LINE_RED])
-            vertices.push([end[0], end[1], LINE_RED])
-        })
+        //     start[1] = clamp(start[1], prevab.min[1], prevab.max[1])
+        //     end[1] = clamp(end[1], prevab.min[1], prevab.max[1])
 
+        //     console.log("postclamp:", start, end)
+
+        //     vertices.push([start[0], start[1], LINE_RED])
+        //     vertices.push([end[0], end[1], LINE_RED])
+        // })
+        // console.log("vertices", vertices)
         let cab:AABB = drawList[drawList.length-1]?.n.aabb ??fullAABB
         
         vertices.push([cab.min[0], cab.min[1], SQUARE_RED])
@@ -159,7 +164,10 @@ export class kdNode implements drawable{
 
         gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices.flat()), gl.STATIC_DRAW); 
 
-        gl.drawArrays(gl.LINES, 0, vertices.length-6);
+        // console.log("vertices:", vertices.length-6,vertices)
+        
+        // gl.drawArrays(gl.LINES, 0, vertices.length-6);
+        // gl.drawArrays(gl.LINES, 0, vertices.length);
 
         gl.drawArrays(gl.TRIANGLES, vertices.length-6, 6);
 
@@ -222,6 +230,7 @@ export class kdNode implements drawable{
 
 
         if(!ray.intersectAABB(this.aabb).hit) {
+            drawList.pop()
             return {hit:false, minT:Infinity, idx:-1}
         } else {
             console.log("ray hit aabb", this)
@@ -242,6 +251,7 @@ export class kdNode implements drawable{
         let firstChild:kdNode|null = null
         let lastChild:kdNode|null = null
         console.log("this:", this)
+        console.log("this aabb:", this.aabb)
 
         if(ray.origin[this.axis] < this.value) {//if it's on the lesser side
             if(ray.direction[this.axis] > 0) {//but it might go accross {
@@ -271,6 +281,11 @@ export class kdNode implements drawable{
         console.log("firstChild", firstChild)
         console.log("lastChild", lastChild)
         console.log("drawlist:", drawList)
+        console.log(".")
+        console.log(",")
+        console.log(".")
+        console.log(",")
+        console.log(".")
         await genPromise()//TODO: move this back up?
         if(firstChild){
 
