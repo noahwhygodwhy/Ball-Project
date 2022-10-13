@@ -9,9 +9,9 @@ var i = 0;
 
 const LINE_RED = 0.9
 const SQUARE_RED = 0.1
+const clamp = (num:number, min:number, max:number):number => Math.min(Math.max(num, min), max);
 
-
-var drawList:Array<{n:kdNode, g:boolean}> = []; //n for node, g for greater 
+var drawList:Array<{n:kdNode}> = []; //n for node, g for greater 
 
 async function rayHitListOfShapes(indexes:Array<number>, ray:Ray, balls:Array<Array<number>>): Promise<{hit:boolean, minT:number, idx:number}> {
     let minResult: {hit:boolean, minT:number, idx:number} = {hit:false, minT:Infinity, idx:-1};
@@ -40,7 +40,6 @@ export class kdNode implements drawable{
     //TODO: needs a totalList, what the fuck are you using for an index
     constructor(balls:Array<Array<number>>, totalList:Array<number>, aabb:AABB,layer:number = 0) {
         this.aabb = aabb
-        drawList = []
         i+=1
 
         if(i > 50)
@@ -95,6 +94,8 @@ export class kdNode implements drawable{
             this.greaterChild = null;
         }
         
+        // drawList = [{n:this, g:false}]
+        drawList = []
     }
 
 
@@ -121,42 +122,40 @@ export class kdNode implements drawable{
 
         let vertices:Array<Array<number>> = []
 
-        let drawSquare:AABB = new AABB(0, 0, SPACE_WIDTH, SPACE_HEIGHT);
+        // let drawSquare:AABB = new AABB(0, 0, SPACE_WIDTH, SPACE_HEIGHT);
+        let fullAABB = new AABB(0, 0, SPACE_WIDTH, SPACE_HEIGHT)
         drawList.forEach((v, i) => {
-            if(v.g) {
-                if(v.n.axis == 0) {
-                    vertices.push([v.n.value, drawSquare.min[1], LINE_RED])
-                    vertices.push([v.n.value, drawSquare.max[1], LINE_RED])
-                    drawSquare.min[0] = v.n.value
-                } else {
-                    vertices.push([drawSquare.min[0], v.n.value, LINE_RED])
-                    vertices.push([drawSquare.max[0], v.n.value, LINE_RED])
-                    drawSquare.min[1] = v.n.value
-                }
-                //if greater draw a line from drawSquare[axis] to space_max
-                //set drawsquare[axis] to be this value
+            let prevab:AABB = (drawList.at(i-1)?.n.aabb) ?? fullAABB;
+            
+            let start:Array<number> = []
+            let end:Array<number> = []
+
+            if(v.n.axis == 0) {
+                start = [v.n.value, 0, LINE_RED]
+                end = [v.n.value, SPACE_HEIGHT, LINE_RED]
             } else {
-                if(v.n.axis == 0) {
-                    vertices.push([v.n.value, drawSquare.min[1], LINE_RED])
-                    vertices.push([v.n.value, drawSquare.max[1], LINE_RED])
-                    drawSquare.max[0] = v.n.value
-                } else {
-                    vertices.push([drawSquare.min[0], v.n.value, LINE_RED])
-                    vertices.push([drawSquare.max[0], v.n.value, LINE_RED])
-                    drawSquare.max[1] = v.n.value
-                }
-                //if lessser, draw a line from 0 to drawSquare[axis]
-                //set drawsquare[axis] to be this value
+                start = [0, v.n.value, LINE_RED]
+                end = [SPACE_WIDTH, v.n.value, LINE_RED]
             }
+            start[0] = clamp(start[0], prevab.min[0], prevab.max[0])
+            end[0] = clamp(end[0], prevab.min[0], prevab.max[0])
+
+            start[1] = clamp(start[1], prevab.min[1], prevab.max[1])
+            end[1] = clamp(end[1], prevab.min[1], prevab.max[1])
+
+            vertices.push([start[0], start[1], LINE_RED])
+            vertices.push([end[0], end[1], LINE_RED])
         })
 
-        vertices.push([drawSquare.min[0], drawSquare.min[1], SQUARE_RED])
-        vertices.push([drawSquare.max[0], drawSquare.min[1], SQUARE_RED])
-        vertices.push([drawSquare.min[0], drawSquare.max[1], SQUARE_RED])
+        let cab:AABB = drawList[drawList.length-1]?.n.aabb ??fullAABB
         
-        vertices.push([drawSquare.max[0], drawSquare.max[1], SQUARE_RED])
-        vertices.push([drawSquare.min[0], drawSquare.max[1], SQUARE_RED])
-        vertices.push([drawSquare.max[0], drawSquare.min[1], SQUARE_RED])
+        vertices.push([cab.min[0], cab.min[1], SQUARE_RED])
+        vertices.push([cab.max[0], cab.min[1], SQUARE_RED])
+        vertices.push([cab.min[0], cab.max[1], SQUARE_RED])
+        
+        vertices.push([cab.max[0], cab.max[1], SQUARE_RED])
+        vertices.push([cab.min[0], cab.max[1], SQUARE_RED])
+        vertices.push([cab.max[0], cab.min[1], SQUARE_RED])
 
         gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices.flat()), gl.STATIC_DRAW); 
 
@@ -214,7 +213,7 @@ export class kdNode implements drawable{
 
 
 
-    async intersectTest(ray:Ray, balls:Array<Array<number>>, g:boolean = false): Promise<{hit:boolean, minT:number, idx:number}> {
+    async intersectTest(ray:Ray, balls:Array<Array<number>>): Promise<{hit:boolean, minT:number, idx:number}> {
 
         // let toReturn = {hit:false, minT:Infinity, idx:-1};
         
@@ -223,8 +222,9 @@ export class kdNode implements drawable{
 
 
         if(!ray.intersectAABB(this.aabb).hit) {
-            drawList.pop()
             return {hit:false, minT:Infinity, idx:-1}
+        } else {
+            console.log("ray hit aabb", this)
         }
         // let point:glm.vec2;
 
@@ -237,23 +237,20 @@ export class kdNode implements drawable{
         // }
 
         
+        drawList.push({n:this})
+        
         let firstChild:kdNode|null = null
         let lastChild:kdNode|null = null
-        let fp:boolean = false
-        let lp:boolean = false
         console.log("this:", this)
 
         if(ray.origin[this.axis] < this.value) {//if it's on the lesser side
             if(ray.direction[this.axis] > 0) {//but it might go accross {
                 console.log("case 1")
-                fp = false
-                lp = true
                 firstChild = this.lesserChild
                 lastChild = this.greaterChild
             }
             else { //it doesn't go across, lesser only
                 console.log("case 2")
-                lp = false
                 firstChild = this.lesserChild
                 //left, then right
             }
@@ -263,44 +260,40 @@ export class kdNode implements drawable{
                 console.log("case 3")
                 firstChild = this.greaterChild
                 lastChild = this.lesserChild
-                fp = true
-                lp = false
                 //right then center then left
             }
             else { //it doesn't go across, greater only
                 console.log("case 4")
-                fp = true
                 firstChild = this.greaterChild
                 //right then center
             }
         }
         console.log("firstChild", firstChild)
         console.log("lastChild", lastChild)
-
+        console.log("drawlist:", drawList)
         await genPromise()//TODO: move this back up?
         if(firstChild){
 
-            drawList.push({n:firstChild, g:fp})
-            let hitResult = await firstChild.intersectTest(ray, balls, fp)
-            drawList.pop()
+            let hitResult = await firstChild.intersectTest(ray, balls)
             if(hitResult && hitResult.hit){
+                drawList.pop()
                 return hitResult
             }
         }
 
         let hitResult = await rayHitListOfShapes(this.myList, ray, balls);
         if(hitResult && hitResult.hit){
+            drawList.pop()
             return hitResult
         }
         if(lastChild) {
-            drawList.push({n:lastChild, g:lp})
-            let hitResult = await lastChild.intersectTest(ray, balls, lp)
-            drawList.pop()
+            let hitResult = await lastChild.intersectTest(ray, balls)
             if(hitResult && hitResult.hit){
                 drawList.pop()
                 return hitResult
             }
         }
+        drawList.pop()
         return {hit:false, minT:Infinity, idx:-1}
 
     }

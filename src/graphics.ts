@@ -267,10 +267,11 @@ function main() {
             partitioning = theTree
             console.log("made kd tree")
             console.log(theTree.xXx_to$tring_xXx())
-
+            
             let theRay:Ray = getRayFromEvent(e);
             console.log(theRay.toString())
             console.log("awaiting")
+            await genPromise()
             let hitResult = await theTree.intersectTest(theRay,positions);
             console.log("awaited", hitResult)
             if(hitResult) {
