@@ -20,5 +20,8 @@
         "prepare": "npm.cmd run compile",
         "pretest": "npm.cmd run compile",
         "posttest": "npm.cmd run lint"
+    },
+    "dependencies": {
+        "bootstrap": "^5.2.2"
     }
 }
