@@ -243,18 +243,25 @@ function main() {
     }
     
     async function shootRayGrid(e:MouseEvent) {
-        let theGrid = new unigrid(positions)
-        let theRay:Ray = getRayFromEvent(e);
+        if(go) {
+            go = false
+            
+            let theGrid = new unigrid(positions)
+            partitioning = theGrid
+            let theRay:Ray = getRayFromEvent(e);
 
-        console.log("shoot ray grid");
-        let hitResult = await theGrid.intersectTest(theRay,positions);
-        console.log("awaited", hitResult)
-        if(hitResult) {
-            selectedBall = hitResult.idx
-            // positions = positions.filter((v, i)=>i!=hitResult.idx);
-            // velocities = velocities.filter((v, i)=>i!=hitResult.idx);
+            console.log("shoot ray grid");
+            let hitResult = await theGrid.intersectTest(theRay,positions);
+            console.log("awaited", hitResult)
+            if(hitResult) {
+                // selectedBall = hitResult.idx
+                positions = positions.filter((v, i)=>i!=hitResult.idx);
+                velocities = velocities.filter((v, i)=>i!=hitResult.idx);
+            }
+            await genPromise()
+            partitioning = null
+            go = true
         }
-
         /**
          * construct a grid partitioning system
          * add all points into it
@@ -291,7 +298,7 @@ function main() {
                 // positions = positions.filter((v, i)=>i!=hitResult.idx);
                 // velocities = velocities.filter((v, i)=>i!=hitResult.idx);
             }
-            
+            partitioning = null
             // console.log("shoot ray kd");
             /** 
              * From list of points, create kd tree
