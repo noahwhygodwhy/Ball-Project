@@ -2,7 +2,6 @@
 <script>var exports = {};</script>
 <script src="main.js"></script>
 
-
 <style>
     .column {
   float: left;
@@ -22,6 +21,8 @@
             <canvas tabindex='1' id="glCanvas" width="1000" height="800"></canvas>
         </div>
         <div class="column">
+            Show Steps: <input type="checkbox" checked data-toggle="toggle" change="setShowSteps">
+
             <p>Mode: <span id="modeText"></span></p>
             <p>Steps:<span id="stepsText"></span></p>
             <p>Min Ray Hit Distance:<span id="minT"></span></p>

@@ -7,6 +7,7 @@ import { kdNode } from "./kdtree";
 import { AABB, Ray } from "./ray"
 import { drawable } from "./drawable";
 import { unigrid } from "./unigrid";
+import "bootstrap"
 
 let i = 0
 let value = 0.0
@@ -25,6 +26,15 @@ var shootFunction:(this: HTMLCanvasElement, ev: MouseEvent) => any;
 
 var selectedBall = -1;
 
+var showSteps = false
+
+
+
+function setShowSteps(e:any) {
+    console.log("e:", e)
+}
+
+
 
 export var resolveStep:(value: number | PromiseLike<number>) => void;
 
@@ -33,7 +43,8 @@ function step(event:any) {
 }
 
 export async function genPromise(){
-    await new Promise((resolve:(value: number | PromiseLike<number>) => void) => resolveStep = resolve);
+    if(showSteps)
+        await new Promise((resolve:(value: number | PromiseLike<number>) => void) => resolveStep = resolve);
 }
 
 const clamp = (num:number, min:number, max:number) => Math.min(Math.max(num, min), max);

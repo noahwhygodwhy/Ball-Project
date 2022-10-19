@@ -13,15 +13,19 @@ export class unigrid implements drawable{
     grid:Array<Array<Array<number>>>
     gridSize:number
     currAABB:AABB|null = null    
+    gridX:number
+    gridY:number
 
     constructor(balls:Array<Array<number>>, gridSize:number = 100){
         console.log("ys:",Math.floor(SPACE_HEIGHT/gridSize))
         console.log("xs:",Math.floor(SPACE_WIDTH/gridSize))
 
         this.gridSize = gridSize
-        this.grid = new Array<Array<Array<number>>>(Math.floor(SPACE_HEIGHT/gridSize));
+        this.gridX = Math.floor(SPACE_WIDTH/gridSize)
+        this.gridY = Math.floor(SPACE_HEIGHT/gridSize)
+        this.grid = new Array<Array<Array<number>>>(this.gridY);
         for(let i = 0; i < this.grid.length; i++){
-            this.grid[i] = new Array<Array<number>>(Math.floor(SPACE_WIDTH/gridSize))
+            this.grid[i] = new Array<Array<number>>(this.gridX)
             for(let j = 0; j < this.grid[i].length; j++) {
                 this.grid[i][j] = new Array<number>()
             }
@@ -82,6 +86,10 @@ export class unigrid implements drawable{
             console.log("going")
             let minCircleT = Infinity
             let minCircle = -1
+            console.log("this.gridX", this.gridX, "this.gridY", this.gridY)
+            if(gridCoord.x > this.gridX-1 || gridCoord.y > this.gridY-1) {
+                break
+            }
             console.log("this.grid[gridCoord.y][gridCoord.x].length", this.grid[gridCoord.y][gridCoord.x].length)
             for(let i = 0; i < this.grid[gridCoord.y][gridCoord.x].length; i++) {
                 let v = this.grid[gridCoord.y][gridCoord.x][i]
