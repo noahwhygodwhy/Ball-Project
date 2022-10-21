@@ -10,16 +10,16 @@ import { quadTree } from "./ps/quadtree";
 import { partitioningSystem } from "./ps/partitioningSystem";
 import { bruteForce } from "./ps/brute";
 
-let i = 0
-let value = 0.0
+// let i = 0
+// let value = 0.0
 let gl:WebGL2RenderingContext
-let program:WebGLProgram|null
+// let program:WebGLProgram|null
 export const BALL_RADIUS:number = 10;
 export const SPACE_WIDTH:number = 800;
 export const SPACE_HEIGHT:number = 800;
 
-var mouseX = 0;
-var mouseY = 0
+// var mouseX = 0;
+// var mouseY = 0
 var partitioning:partitioningSystem|null = null
 var neighborMethods = ["Brute Force", "Uniform Grid", "Quad Tree", "KD Tree"];
 var currMethod = 0;
@@ -36,7 +36,6 @@ var partSystem:(typeof bruteForce | typeof unigrid | typeof kdTree | typeof quad
 
 function setShowSteps(e:any) {
     showSteps = e.target.checked
-    //console.log("e:", e)
 }
 
 
@@ -65,11 +64,11 @@ function main() {
     canvas.width = SPACE_WIDTH;
     canvas.height = SPACE_HEIGHT;
    
-    window.addEventListener('mousemove', (e:MouseEvent) => {
-        const rect = canvas.getBoundingClientRect()
-        mouseX = e.clientX-rect.left 
-        mouseY = e.clientY-rect.top
-    });
+    // window.addEventListener('mousemove', (e:MouseEvent) => {
+    //     const rect = canvas.getBoundingClientRect()
+    //     mouseX = e.clientX-rect.left 
+    //     mouseY = e.clientY-rect.top
+    // });
     // Initialize the GL context
     if(canvas == null) {
         throw "can't find canvas";
@@ -205,130 +204,7 @@ function main() {
         return theRay
     }
 
-    // async function shootRayBrute(e:MouseEvent) {
-
-    //     console.log("shoot rayBasic");
-    //     if(go){
-    //         go = false;
-            
-
-    //         // let wv = glm.vec2.fromValues(0, 0);
-    //         // let rayO:glm.vec2 = glm.vec2.fromValues(WIDTH/2, 0);
-    //         // const rect = canvas.getBoundingClientRect();
-    //         // let dest:glm.vec2 = glm.vec2.fromValues(e.clientX-rect.left, HEIGHT-(e.clientY-rect.top));
-    //         // let rayDir = glm.vec2.normalize(wv, glm.vec2.sub(dest, dest, rayO))
-    //         // let endPoint = glm.vec2.multiply(wv, rayDir, glm.vec2.fromValues(WIDTH*HEIGHT, WIDTH*HEIGHT));
-    //         // rays.push([WIDTH/2, 0, cTime/1000, endPoint[0], endPoint[1], cTime/1000]);
-    //         let theRay:Ray = getRayFromEvent(e)
-
-    //         minT = Number.MAX_VALUE;
-    //         minIdx = -1;
-    //         currSteps = 0;
-    //         updateText();
-            
-    //         for(let i = 0; i < positions.length; i++){
-    //             currSteps++;
-    //             selectedBall = i;
-
-    //             let hitResult = theRay.intersectCircle(glm.vec2.fromValues(positions[i][0], positions[i][1]))
-
-    //             if(hitResult.hit && hitResult.minT < minT){
-    //                 minT = hitResult.minT;
-    //                 minIdx = i;
-    //             }
-                
-    //             updateText();
-    //             await genPromise();
-    //         }
-    //         selectedBall = -1;
-    //         if(minIdx >= 0) {
-    //             positions = positions.filter((v, i)=>i!=minIdx);
-    //             velocities = velocities.filter((v, i)=>i!=minIdx);
-    //         } 
-    //         go = true;
-    //     }
-    // }
     
-    // async function shootRayGrid(e:MouseEvent) {
-    //     if(go) {
-    //         go = false
-            
-    //         let theGrid = new unigrid(positions)
-    //         partitioning = theGrid
-    //         let theRay:Ray = getRayFromEvent(e);
-
-    //         console.log("shoot ray grid");
-    //         let hitResult = await theGrid.intersectTest(theRay,positions);
-    //         console.log("awaited", hitResult)
-    //         if(hitResult) {
-    //             // selectedBall = hitResult.idx
-    //             positions = positions.filter((v, i)=>i!=hitResult.idx);
-    //             velocities = velocities.filter((v, i)=>i!=hitResult.idx);
-    //         }
-    //         await genPromise()
-    //         partitioning = null
-    //         go = true
-    //     }
-    //     /**
-    //      * construct a grid partitioning system
-    //      * add all points into it
-    //      * use to compute ray/circle intersection
-    //      */
-    // }
-    
-    // async function shootRayQuad(e:MouseEvent) {
-    //     console.log("shoot ray quad");
-    //     if(go) {
-    //         go = false
-            
-    //         let theTree:quadTree = new quadTree(positions)
-    //         partitioning = theTree
-    //         console.log("made kd tree")
-            
-    //         let theRay:Ray = getRayFromEvent(e);
-    //         console.log(theRay.toString())
-    //         console.log("awaiting")
-    //         await genPromise()
-    //         let hitResult = await theTree.intersectTest(theRay,positions);
-    //         console.log("awaited", hitResult)
-    //         if(hitResult) {
-    //             selectedBall = hitResult.idx
-    //             // positions = positions.filter((v, i)=>i!=hitResult.idx);
-    //             // velocities = velocities.filter((v, i)=>i!=hitResult.idx);
-    //         }
-    //         partitioning = null
-    //     }
-    //     /** 
-    //      * 
-    //      * From list of points, create quad tree
-    //      * use quad tree to perform ray/circle intersection
-    //      */
-    // }
-    
-
-    // async function shootRayKD(e:MouseEvent) {
-
-
-    //     if(go) {
-    //         go = false
-            
-    //         let theTree:kdTree = new kdTree(positions)
-    //         partitioning = theTree
-    //         console.log("made kd tree")
-            
-    //         let theRay:Ray = getRayFromEvent(e);
-    //         console.log(theRay.toString())
-    //         console.log("awaiting")
-    //         await genPromise()
-    //         let hitResult = await theTree.intersectTest(theRay,positions);
-    //         console.log("awaited", hitResult)
-    //         if(hitResult) {
-    //             selectedBall = hitResult.idx
-    //         }
-    //         partitioning = null
-    //     }
-    // }
-
     async function handleClick(e:MouseEvent) {
 
         if(go) {
@@ -357,7 +233,8 @@ function main() {
     }
     function prevMode() {
         if(go) {
-            currMethod = (currMethod-1)%neighborMethods.length;
+            currMethod = (currMethod-1)
+            if(currMethod < 0) {currMethod = neighborMethods.length-1}
             partSystem = PART_SYSTEMS[currMethod];
         }
     }
@@ -421,7 +298,7 @@ function main() {
 
 //draw balls
         ballShader.use(gl);
-        // console.log("selected ball: ", selectedBall);
+
         gl.uniform1i(selectedBallLoc, selectedBall);
         
         gl.uniform1f(widthLoc, SPACE_WIDTH);

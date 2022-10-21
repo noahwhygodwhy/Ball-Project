@@ -36,14 +36,11 @@ export class quadTree implements partitioningSystem {
             }
 
             let res = ray.intersectAABB(this.currNode.aabb)
-            console.log("goes through aabb:", res.hit)
             if(!res.hit) {
                 continue
             }
 
-            if(this.currNode instanceof quadLeaf) {
-                console.log("curr node is a leaf, with shapes:", this.currNode.myList)
-                
+            if(this.currNode instanceof quadLeaf) {              
                 await genPromise()
                 let res = await rayHitListOfShapes(this.currNode.myList, ray, balls)
                 if(res.hit) {
@@ -55,7 +52,6 @@ export class quadTree implements partitioningSystem {
                 await genPromise()
                 let xp = ray.direction[0] > 0
                 let yp = ray.direction[1] > 0
-                console.log("xp, yp:", xp, yp)
                 let order = []
                 if(xp) {
                     if(yp) {

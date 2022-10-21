@@ -123,29 +123,6 @@ export class Ray{
         
         return {hit:true, tMin:tmin, tMax:tmax}
 
-        //return {hit:false, tMin:0, tMax:0}
-        
-
-
-
-
-        // let wv:glm.vec2 = glm.vec2.fromValues(0.0, 0.0);
-        // let invD:glm.vec2 = glm.vec2.div(wv, glm.vec2.fromValues(1,1), this.direction);
-
-        // let t0:glm.vec2 = glm.vec2.mul(wv, glm.vec2.sub(wv, aabb.min, this.origin), invD);
-        // let t1:glm.vec2 = glm.vec2.mul(wv, glm.vec2.sub(wv, aabb.max, this.origin), invD);
-
-        // console.log("t0", t0, "t1", t1)
-
-        // let tSmaller:glm.vec2 = glm.vec2.min(wv, t0, t1);
-        // let tBigger:glm.vec2= glm.vec2.min(wv, t0, t1);
-
-        // let tMin:number = Math.max(Number.NEGATIVE_INFINITY, Math.max(tSmaller[0], Math.max(tSmaller[1], tSmaller[2])));
-        // let tMax:number = Math.min(Number.POSITIVE_INFINITY, Math.min(tBigger[0], Math.min(tBigger[1], tBigger[2])));
-        // console.log("tMin:", tMin, "tMax", tMax)
-        // let hit:boolean = tMin <= tMax&& tMax >= 0.0;
-
-        // return {hit, tMin, tMax};
     }
     toString() {
         return `(${this.origin[0].toFixed(3)}, ${this.origin[1].toFixed(3)}), (${this.direction[0].toFixed(3)}, ${this.direction[1].toFixed(3)})`

@@ -16,7 +16,6 @@ export class bruteForce implements partitioningSystem {
 
     async intersectTest(ray:Ray, balls:Array<Array<number>>): Promise<{hit:boolean, minT:number, idx:number}> {
         let x = await rayHitListOfShapes(this.list, ray, balls)
-        selectBall(-1)
         return x
     }
 

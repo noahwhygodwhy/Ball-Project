@@ -20,5 +20,6 @@ export async function rayHitListOfShapes(indexes:Array<number>, ray:Ray, balls:A
             minResult = {hit:true, minT:hr.minT, idx:v}
         }
     }
+    selectBall(-1)
     return minResult
 }

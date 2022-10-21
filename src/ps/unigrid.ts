@@ -17,9 +17,6 @@ export class unigrid implements partitioningSystem{
     gridY:number
 
     constructor(balls:Array<Array<number>>, gridSize:number = 100){
-        console.log("ys:",Math.floor(SPACE_HEIGHT/gridSize))
-        console.log("xs:",Math.floor(SPACE_WIDTH/gridSize))
-
         this.gridSize = gridSize
         this.gridX = Math.floor(SPACE_WIDTH/gridSize)
         this.gridY = Math.floor(SPACE_HEIGHT/gridSize)
@@ -30,9 +27,6 @@ export class unigrid implements partitioningSystem{
                 this.grid[i][j] = new Array<number>()
             }
         }
-        console.log("Width:", SPACE_WIDTH)
-        console.log("Height:", SPACE_HEIGHT)
-
         balls.forEach((v, i)=>{
             
             for(let ix = -1; ix < 2; ix+=2){
@@ -45,10 +39,6 @@ export class unigrid implements partitioningSystem{
                     }
                 }
             }
-            //TODO: add it to all four possible grid sections, not just the centers one
-            // let {y, x} = this.getGridIdx(glm.vec2.fromValues(v[0]-GRID_BIAS, v[1]-GRID_BIAS))
-            // console.log("coord:", v[0], v[1], "coords:", x, y)
-            // this.grid[y][x].push(i)
         })
 
     }
@@ -69,7 +59,6 @@ export class unigrid implements partitioningSystem{
     
     async intersectTest(ray:Ray, balls:Array<Array<number>>): Promise<{hit:boolean, minT:number, idx:number}> {
 
-        let originalOrigin = ray.origin
         let worldAABB = new AABB(0, 0, SPACE_WIDTH, SPACE_HEIGHT);
         let hitResult = ray.intersectAABB(worldAABB)
         if(!hitResult.hit){
@@ -82,27 +71,16 @@ export class unigrid implements partitioningSystem{
         hitResult = ray.intersectAABB(this.currAABB)
         await genPromise()
         while(hitResult.hit) {
-            console.log("grid x:", gridCoord.x, "grid y", gridCoord.y)
-            console.log("going")
-            let minCircleT = Infinity
-            let minCircle = -1
-            console.log("this.gridX", this.gridX, "this.gridY", this.gridY)
             if(gridCoord.x > this.gridX-1 || gridCoord.x < 0 || gridCoord.y > this.gridY-1 || gridCoord.y < 0) {
                 //then it went off the screen, so it's done
                 break
             }
-            console.log("this.grid[gridCoord.y][gridCoord.x].length", this.grid[gridCoord.y][gridCoord.x].length)
 
             let res = await rayHitListOfShapes(this.grid[gridCoord.y][gridCoord.x], ray, balls)            
             if(res.hit) {
                 return res
             }
-            
-
             await genPromise()
-            console.log("ray", ray)
-            console.log("hit res:", hitResult)
-            console.log("")
             newRayOrigin = newRayO(ray, hitResult.tMax+GRID_BIAS)
             gridCoord = this.getGridIdx(newRayOrigin)
             this.currAABB = this.aabbFromGrid(gridCoord.x, gridCoord.y)
