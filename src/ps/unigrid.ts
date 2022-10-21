@@ -1,14 +1,14 @@
 import * as glm from "gl-matrix" 
-import {Ray, AABB} from "./ray"
-import { BALL_RADIUS, SPACE_WIDTH, SPACE_HEIGHT, genPromise, selectBall} from "./graphics"
-import {drawable} from "./drawable"
-import { Shader } from "./shader"
-
-const GRID_RED = 0.40
+import {Ray, AABB} from "../ray"
+import { BALL_RADIUS, SPACE_WIDTH, SPACE_HEIGHT, genPromise, selectBall} from "../graphics"
+import { Shader } from "../shader"
+import { partitioningSystem, rayHitListOfShapes } from "./partitioningSystem"
+const LINE_RED = 1.00
+const GRID_RED = 0.70
 const SQUARE_RED = 0.20
 const GRID_BIAS = 0.1 //Grid size should never be anywhere close to this small
 
-export class unigrid implements drawable{
+export class unigrid implements partitioningSystem{
 
     grid:Array<Array<Array<number>>>
     gridSize:number
@@ -87,37 +87,19 @@ export class unigrid implements drawable{
             let minCircleT = Infinity
             let minCircle = -1
             console.log("this.gridX", this.gridX, "this.gridY", this.gridY)
-            if(gridCoord.x > this.gridX-1 || gridCoord.y > this.gridY-1) {
+            if(gridCoord.x > this.gridX-1 || gridCoord.x < 0 || gridCoord.y > this.gridY-1 || gridCoord.y < 0) {
+                //then it went off the screen, so it's done
                 break
             }
             console.log("this.grid[gridCoord.y][gridCoord.x].length", this.grid[gridCoord.y][gridCoord.x].length)
-            for(let i = 0; i < this.grid[gridCoord.y][gridCoord.x].length; i++) {
-                let v = this.grid[gridCoord.y][gridCoord.x][i]
-                selectBall(v)
-                console.log("selected", v)
-                await genPromise()
-                let circleRes = ray.intersectCircle(glm.vec2.fromValues(balls[v][0], balls[v][1]))
 
-                if(circleRes.hit) {
-                    console.log("circleres.minT", circleRes.minT)
-                    if(circleRes.minT < minCircleT){
-                        minCircleT = circleRes.minT
-                        minCircle = v
-                    }
-                }
+            let res = await rayHitListOfShapes(this.grid[gridCoord.y][gridCoord.x], ray, balls)            
+            if(res.hit) {
+                return res
             }
-            if(this.grid[gridCoord.y][gridCoord.x].length > 0 ){
-                await genPromise()
-            }
-            selectBall(-1)
-            console.log("selected -1")
-            if(minCircle >= 0){
-                console.log("returning circle hit")
-                let hitPoint = newRayO(ray, minCircleT)
-                let actualT = glm.vec2.distance(hitPoint, originalOrigin)
-                return {hit:true, minT:actualT, idx:minCircle}
-            }
+            
 
+            await genPromise()
             console.log("ray", ray)
             console.log("hit res:", hitResult)
             console.log("")
@@ -162,7 +144,26 @@ export class unigrid implements drawable{
             vertices.push([SPACE_WIDTH, y, GRID_RED])
             numGridVerts += 2
         }
+        let offset = 0
         if(this.currAABB) {
+
+
+            offset = 6
+            //bottom
+            vertices.push([this.currAABB.min[0], this.currAABB.min[1],  LINE_RED])
+            vertices.push([this.currAABB.max[0], this.currAABB.min[1],  LINE_RED])
+            //left
+            vertices.push([this.currAABB.min[0], this.currAABB.min[1],  LINE_RED])
+            vertices.push([this.currAABB.min[0], this.currAABB.max[1],  LINE_RED])
+            //top
+            vertices.push([this.currAABB.min[0], this.currAABB.max[1],  LINE_RED])
+            vertices.push([this.currAABB.max[0], this.currAABB.max[1],  LINE_RED])
+            //right
+            vertices.push([this.currAABB.max[0], this.currAABB.min[1],  LINE_RED])
+            vertices.push([this.currAABB.max[0], this.currAABB.max[1],  LINE_RED])
+
+
+
             vertices.push([this.currAABB.min[0], this.currAABB.min[1], SQUARE_RED])
             vertices.push([this.currAABB.max[0], this.currAABB.min[1], SQUARE_RED])
             vertices.push([this.currAABB.min[0], this.currAABB.max[1], SQUARE_RED])
@@ -174,9 +175,9 @@ export class unigrid implements drawable{
         
         gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices.flat()), gl.STATIC_DRAW); 
         
-        gl.drawArrays(gl.LINES, 0, numGridVerts);
+        gl.drawArrays(gl.LINES, 0, vertices.length-offset);
 
-        gl.drawArrays(gl.TRIANGLES, numGridVerts, 6);
+        gl.drawArrays(gl.TRIANGLES, vertices.length-offset, offset);
 
         gl.bindBuffer(gl.ARRAY_BUFFER, null);
         gl.bindVertexArray(null);

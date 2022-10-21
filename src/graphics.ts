@@ -3,11 +3,12 @@
 import * as glm from "gl-matrix" 
 import {Shader} from "./shader"
 import * as shaders from "./shader"
-import { kdNode } from "./kdtree";
+import { kdTree } from "./ps/kdtree";
 import { AABB, Ray } from "./ray"
-import { drawable } from "./drawable";
-import { unigrid } from "./unigrid";
-import "bootstrap"
+import { unigrid } from "./ps/unigrid";
+import { quadTree } from "./ps/quadtree";
+import { partitioningSystem } from "./ps/partitioningSystem";
+import { bruteForce } from "./ps/brute";
 
 let i = 0
 let value = 0.0
@@ -19,21 +20,24 @@ export const SPACE_HEIGHT:number = 800;
 
 var mouseX = 0;
 var mouseY = 0
-var partitioning:drawable|null = null
+var partitioning:partitioningSystem|null = null
 var neighborMethods = ["Brute Force", "Uniform Grid", "Quad Tree", "KD Tree"];
 var currMethod = 0;
-var shootFunction:(this: HTMLCanvasElement, ev: MouseEvent) => any;
+// var shootFunction:(this: HTMLCanvasElement, ev: MouseEvent) => any;
 
 var selectedBall = -1;
 
 var showSteps = false
 
 
+//lol ts is a bit silly
+const PART_SYSTEMS:(typeof bruteForce | typeof unigrid | typeof kdTree | typeof quadTree)[] = [bruteForce, unigrid, quadTree, kdTree]
+var partSystem:(typeof bruteForce | typeof unigrid | typeof kdTree | typeof quadTree) = bruteForce
 
 function setShowSteps(e:any) {
-    console.log("e:", e)
+    showSteps = e.target.checked
+    //console.log("e:", e)
 }
-
 
 
 export var resolveStep:(value: number | PromiseLike<number>) => void;
@@ -47,15 +51,14 @@ export async function genPromise(){
         await new Promise((resolve:(value: number | PromiseLike<number>) => void) => resolveStep = resolve);
 }
 
-const clamp = (num:number, min:number, max:number) => Math.min(Math.max(num, min), max);
-
-
 
 export function selectBall(i:number){
     selectedBall = i
 }
 
 function main() {
+    
+    document.getElementById("stepscheckbox")?.addEventListener("click", setShowSteps)
     document.getElementById("stepButton")?.addEventListener("click", step)
     
     const canvas = document.querySelector("#glCanvas") as HTMLCanvasElement;
@@ -163,15 +166,8 @@ function main() {
     var minT:number = Number.MAX_VALUE;
     var minIdx:number = -1;
 
-
     let go = true;
-    // function selectBall(event:MouseEvent){
-    //     for(let i = 0; i < velocities.length; i++) {
-    //         let oidx = i*2;
-    //     }
-    //     const rect = canvas.getBoundingClientRect()
-    //     let pos:glm.vec2 =  
-    // }
+
     function spawnMeteor(){
         positions.push([Math.random()*SPACE_WIDTH, SPACE_HEIGHT])
         velocities.push(-Math.random()*50)
@@ -209,63 +205,139 @@ function main() {
         return theRay
     }
 
-    async function shootRayBrute(e:MouseEvent) {
+    // async function shootRayBrute(e:MouseEvent) {
 
-        console.log("shoot rayBasic");
-        if(go){
-            go = false;
+    //     console.log("shoot rayBasic");
+    //     if(go){
+    //         go = false;
             
 
-            // let wv = glm.vec2.fromValues(0, 0);
-            // let rayO:glm.vec2 = glm.vec2.fromValues(WIDTH/2, 0);
-            // const rect = canvas.getBoundingClientRect();
-            // let dest:glm.vec2 = glm.vec2.fromValues(e.clientX-rect.left, HEIGHT-(e.clientY-rect.top));
-            // let rayDir = glm.vec2.normalize(wv, glm.vec2.sub(dest, dest, rayO))
-            // let endPoint = glm.vec2.multiply(wv, rayDir, glm.vec2.fromValues(WIDTH*HEIGHT, WIDTH*HEIGHT));
-            // rays.push([WIDTH/2, 0, cTime/1000, endPoint[0], endPoint[1], cTime/1000]);
-            let theRay:Ray = getRayFromEvent(e)
+    //         // let wv = glm.vec2.fromValues(0, 0);
+    //         // let rayO:glm.vec2 = glm.vec2.fromValues(WIDTH/2, 0);
+    //         // const rect = canvas.getBoundingClientRect();
+    //         // let dest:glm.vec2 = glm.vec2.fromValues(e.clientX-rect.left, HEIGHT-(e.clientY-rect.top));
+    //         // let rayDir = glm.vec2.normalize(wv, glm.vec2.sub(dest, dest, rayO))
+    //         // let endPoint = glm.vec2.multiply(wv, rayDir, glm.vec2.fromValues(WIDTH*HEIGHT, WIDTH*HEIGHT));
+    //         // rays.push([WIDTH/2, 0, cTime/1000, endPoint[0], endPoint[1], cTime/1000]);
+    //         let theRay:Ray = getRayFromEvent(e)
 
-            minT = Number.MAX_VALUE;
-            minIdx = -1;
-            currSteps = 0;
-            updateText();
+    //         minT = Number.MAX_VALUE;
+    //         minIdx = -1;
+    //         currSteps = 0;
+    //         updateText();
             
-            for(let i = 0; i < positions.length; i++){
-                currSteps++;
-                selectedBall = i;
+    //         for(let i = 0; i < positions.length; i++){
+    //             currSteps++;
+    //             selectedBall = i;
 
-                let hitResult = theRay.intersectCircle(glm.vec2.fromValues(positions[i][0], positions[i][1]))
+    //             let hitResult = theRay.intersectCircle(glm.vec2.fromValues(positions[i][0], positions[i][1]))
 
-                if(hitResult.hit && hitResult.minT < minT){
-                    minT = hitResult.minT;
-                    minIdx = i;
-                }
+    //             if(hitResult.hit && hitResult.minT < minT){
+    //                 minT = hitResult.minT;
+    //                 minIdx = i;
+    //             }
                 
-                updateText();
-                await genPromise();
-            }
-            selectedBall = -1;
-            if(minIdx >= 0) {
-                positions = positions.filter((v, i)=>i!=minIdx);
-                velocities = velocities.filter((v, i)=>i!=minIdx);
-            } 
-            go = true;
-        }
-    }
+    //             updateText();
+    //             await genPromise();
+    //         }
+    //         selectedBall = -1;
+    //         if(minIdx >= 0) {
+    //             positions = positions.filter((v, i)=>i!=minIdx);
+    //             velocities = velocities.filter((v, i)=>i!=minIdx);
+    //         } 
+    //         go = true;
+    //     }
+    // }
     
-    async function shootRayGrid(e:MouseEvent) {
+    // async function shootRayGrid(e:MouseEvent) {
+    //     if(go) {
+    //         go = false
+            
+    //         let theGrid = new unigrid(positions)
+    //         partitioning = theGrid
+    //         let theRay:Ray = getRayFromEvent(e);
+
+    //         console.log("shoot ray grid");
+    //         let hitResult = await theGrid.intersectTest(theRay,positions);
+    //         console.log("awaited", hitResult)
+    //         if(hitResult) {
+    //             // selectedBall = hitResult.idx
+    //             positions = positions.filter((v, i)=>i!=hitResult.idx);
+    //             velocities = velocities.filter((v, i)=>i!=hitResult.idx);
+    //         }
+    //         await genPromise()
+    //         partitioning = null
+    //         go = true
+    //     }
+    //     /**
+    //      * construct a grid partitioning system
+    //      * add all points into it
+    //      * use to compute ray/circle intersection
+    //      */
+    // }
+    
+    // async function shootRayQuad(e:MouseEvent) {
+    //     console.log("shoot ray quad");
+    //     if(go) {
+    //         go = false
+            
+    //         let theTree:quadTree = new quadTree(positions)
+    //         partitioning = theTree
+    //         console.log("made kd tree")
+            
+    //         let theRay:Ray = getRayFromEvent(e);
+    //         console.log(theRay.toString())
+    //         console.log("awaiting")
+    //         await genPromise()
+    //         let hitResult = await theTree.intersectTest(theRay,positions);
+    //         console.log("awaited", hitResult)
+    //         if(hitResult) {
+    //             selectedBall = hitResult.idx
+    //             // positions = positions.filter((v, i)=>i!=hitResult.idx);
+    //             // velocities = velocities.filter((v, i)=>i!=hitResult.idx);
+    //         }
+    //         partitioning = null
+    //     }
+    //     /** 
+    //      * 
+    //      * From list of points, create quad tree
+    //      * use quad tree to perform ray/circle intersection
+    //      */
+    // }
+    
+
+    // async function shootRayKD(e:MouseEvent) {
+
+
+    //     if(go) {
+    //         go = false
+            
+    //         let theTree:kdTree = new kdTree(positions)
+    //         partitioning = theTree
+    //         console.log("made kd tree")
+            
+    //         let theRay:Ray = getRayFromEvent(e);
+    //         console.log(theRay.toString())
+    //         console.log("awaiting")
+    //         await genPromise()
+    //         let hitResult = await theTree.intersectTest(theRay,positions);
+    //         console.log("awaited", hitResult)
+    //         if(hitResult) {
+    //             selectedBall = hitResult.idx
+    //         }
+    //         partitioning = null
+    //     }
+    // }
+
+    async function handleClick(e:MouseEvent) {
+
         if(go) {
             go = false
-            
-            let theGrid = new unigrid(positions)
-            partitioning = theGrid
+            partitioning = new partSystem(positions)
             let theRay:Ray = getRayFromEvent(e);
-
-            console.log("shoot ray grid");
-            let hitResult = await theGrid.intersectTest(theRay,positions);
-            console.log("awaited", hitResult)
+            await genPromise()
+            let hitResult = await partitioning.intersectTest(theRay,positions);
             if(hitResult) {
-                // selectedBall = hitResult.idx
                 positions = positions.filter((v, i)=>i!=hitResult.idx);
                 velocities = velocities.filter((v, i)=>i!=hitResult.idx);
             }
@@ -273,73 +345,24 @@ function main() {
             partitioning = null
             go = true
         }
-        /**
-         * construct a grid partitioning system
-         * add all points into it
-         * use to compute ray/circle intersection
-         */
     }
     
-    async function shootRayQuad(e:MouseEvent) {
-        console.log("shoot ray quad");
-        /** 
-         * From list of points, create quad tree
-         * use quad tree to perform ray/circle intersection
-         */
-    }
-    
-    async function shootRayKD(e:MouseEvent) {
-        if(go) {
-            go = false
-            
-            let parentAABB:AABB = new AABB(0, 0, SPACE_WIDTH, SPACE_HEIGHT)
-            let theTree:kdNode = new kdNode(positions, Array.from(Array(positions.length).keys()), parentAABB)
-            partitioning = theTree
-            console.log("made kd tree")
-            console.log(theTree.xXx_to$tring_xXx())
-            
-            let theRay:Ray = getRayFromEvent(e);
-            console.log(theRay.toString())
-            console.log("awaiting")
-            await genPromise()
-            let hitResult = await theTree.intersectTest(theRay,positions);
-            console.log("awaited", hitResult)
-            if(hitResult) {
-                selectedBall = hitResult.idx
-                // positions = positions.filter((v, i)=>i!=hitResult.idx);
-                // velocities = velocities.filter((v, i)=>i!=hitResult.idx);
-            }
-            partitioning = null
-            // console.log("shoot ray kd");
-            /** 
-             * From list of points, create kd tree
-             * use kd tree to perform ray/circle intersection
-             */ 
-            // go = true
-        }
-    }
 
-    let shootFunctions = [shootRayBrute, shootRayGrid, shootRayQuad, shootRayKD];
+
     function nextMode() {
         if(go){
             currMethod = (currMethod+1)%neighborMethods.length;
-            canvas.removeEventListener("click", shootFunction, false)
-            shootFunction = shootFunctions[currMethod];
-            canvas.addEventListener("click", shootFunction, false)
+            partSystem = PART_SYSTEMS[currMethod];
         }
     }
     function prevMode() {
         if(go) {
             currMethod = (currMethod-1)%neighborMethods.length;
-            canvas.removeEventListener("click", shootFunction, false)
-            shootFunction = shootFunctions[currMethod];
-            canvas.addEventListener("click", shootFunction, false)
+            partSystem = PART_SYSTEMS[currMethod];
         }
     }
     
-    shootFunction = shootFunctions[currMethod];
-    canvas.addEventListener("click", shootFunction, false)
-
+    canvas.addEventListener("click", handleClick, false)
     document.getElementById("nextMode")?.addEventListener("click", nextMode);
     document.getElementById("prevMode")?.addEventListener("click", prevMode);
 
@@ -347,12 +370,6 @@ function main() {
     function printPos(event:KeyboardEvent):any{
         if(event.key == " "){
             go = !go;
-            //console.log(positions);
-        }
-        if(event.key == "a"){
-            canvas.removeEventListener("click", shootFunction, false)
-            shootFunction = shootFunctions[1];
-            canvas.addEventListener("click", shootFunction, false)
         }
     }
     canvas.addEventListener("keydown", printPos, false)

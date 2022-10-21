@@ -3,7 +3,7 @@ import { BALL_RADIUS, SPACE_HEIGHT, SPACE_WIDTH } from "./graphics";
 import { rayFragSource } from "./shader";
 
 
-export class AABB {
+export class AABB{
     min:glm.vec2
     max:glm.vec2
     constructor(x1:number, y1:number, x2:number, y2:number){
@@ -19,6 +19,10 @@ export class AABB {
         p[0] >= this.min[0] &&
         p[1] >= this.min[1]
     }
+    copy() {
+        return new AABB(this.min[0], this.min[1], this.max[0], this.max[1])
+    }
+
   }
 
   

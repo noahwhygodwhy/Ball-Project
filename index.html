@@ -2,34 +2,50 @@
 <script>var exports = {};</script>
 <script src="main.js"></script>
 
-<style>
-    .column {
-  float: left;
-  width: 50%;
-}
+ <!-- Latest compiled and minified CSS -->
+ <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">
 
-/* Clear floats after the columns */
-.row:after {
-  content: "";
-  display: table;
-  clear: both;
-}
-</style>
-<body>
-    <div class="row">
-        <div class="column">
-            <canvas tabindex='1' id="glCanvas" width="1000" height="800"></canvas>
+ <!-- jQuery library -->
+ <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+ 
+ <!-- Latest compiled JavaScript -->
+ <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script> 
+
+<!-- <style> -->
+    <!-- .column { -->
+  <!-- float: left; -->
+  <!-- width: 50%; -->
+<!-- } -->
+
+<!-- /* Clear floats after the columns */ -->
+<!-- .row:after { -->
+  <!-- content: ""; -->
+  <!-- display: table; -->
+  <!-- clear: both; -->
+<!-- } -->
+<!-- </style> -->
+
+<body style="background-color: black;">
+    <div class="container">
+        <div class="row">
         </div>
-        <div class="column">
-            Show Steps: <input type="checkbox" checked data-toggle="toggle" change="setShowSteps">
+        <div class="row">
+            <div class="col-sm-8">
+                <canvas class="border border-primary" tabindex='1' id="glCanvas" width="1000" height="800"></canvas>
+            </div>
+            <div class="col-sm-1">
+            </div>  
+            <div class="col-sm-3" style="background-color: azure;">
+                Show Steps: <input type="checkbox" id="stepscheckbox">
 
-            <p>Mode: <span id="modeText"></span></p>
-            <p>Steps:<span id="stepsText"></span></p>
-            <p>Min Ray Hit Distance:<span id="minT"></span></p>
-            <p>Min Ray Hit Ball:<span id="minI"></span></p>
-            <button id="stepButton">Step</button>
-            <button id="nextMode">Next Mode</button>
-            <button id="prevMode">Prev Mode</button>
+                <p>Mode: <span id="modeText"></span></p>
+                <p>Steps:<span id="stepsText"></span></p>
+                <p>Min Ray Hit Distance:<span id="minT"></span></p>
+                <p>Min Ray Hit Ball:<span id="minI"></span></p>
+                <button id="stepButton">Step</button>
+                <button id="nextMode">Next Mode</button>
+                <button id="prevMode">Prev Mode</button>
+            </div>
         </div>
     </div>
 </body>
