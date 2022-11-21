@@ -39,12 +39,17 @@
                 Show Steps: <input type="checkbox" id="stepscheckbox">
 
                 <p>Mode: <span id="modeText"></span></p>
-                <p>Steps:<span id="stepsText"></span></p>
-                <p>Min Ray Hit Distance:<span id="minT"></span></p>
-                <p>Min Ray Hit Ball:<span id="minI"></span></p>
+                <p>Ray/Circle Tests:<span id="stepsText"></span></p>
+                <p>Total Balls:<span id="totalBallsText"></span></p>
+                <p>Log<sub>2</sub>(n) Balls:<span id="logNBallsText"></span></p>
+                <p>Average Tests:<span id="avgBallsText"></span></p>
+                <!-- <p>Min Ray Hit Distance:<span id="minT"></span></p> -->
+                <!-- <p>Min Ray Hit Ball:<span id="minI"></span></p> -->
                 <button id="stepButton">Step</button>
                 <button id="nextMode">Next Mode</button>
                 <button id="prevMode">Prev Mode</button>
+                <textarea id="actionLog" name="actionLog" rows="25" cols="60">
+                </textarea>
             </div>
         </div>
     </div>

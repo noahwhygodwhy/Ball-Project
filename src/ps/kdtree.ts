@@ -1,6 +1,6 @@
 import * as glm from "gl-matrix" 
 import {Ray, AABB} from "../ray"
-import { BALL_RADIUS, SPACE_WIDTH, SPACE_HEIGHT, genPromise, selectBall} from "../graphics"
+import { BALL_RADIUS, SPACE_WIDTH, SPACE_HEIGHT, genPromise, selectBall, addAction, formatAABB} from "../graphics"
 import { Shader } from "../shader"
 import { partitioningSystem, rayHitListOfShapes } from "./partitioningSystem"
 
@@ -19,7 +19,7 @@ const clamp = (num:number, min:number, max:number):number => Math.min(Math.max(n
 
 // var drawList:Array<{n:kdNode}> = []; //n for node, g for greater 
 
-
+const axises = ["X", "Y"]
 
 export class kdTree implements partitioningSystem {
     
@@ -31,18 +31,29 @@ export class kdTree implements partitioningSystem {
         this.tree = new kdBranch(balls, Array.from(Array(balls.length).keys()), sAABB)
     }
     async intersectTest(ray:Ray, balls:Array<Array<number>>): Promise<{hit:boolean, minT:number, idx:number}> {
+        
+        addAction("Staring traversal of KD Tree")
+        
         let stack:Array<kdNode> = [this.tree] //TO BE TREATED LIKE A STACK
         while(stack.length>0) {
+            await genPromise()
             this.currNode = stack.pop()
             if(!this.currNode) {
                 throw "AHHHHHHHHHHHHHHH why is kdtree's currnode undefined, this should never happen"
             }
+            addAction(`Current Node: ${formatAABB(this.currNode.aabb)}`)
             let res = ray.intersectAABB(this.currNode.aabb)
             if(!res.hit) {
+                addAction("Ray does not intersect this node, skipping")
+                await genPromise()
                 continue
             }
             if(this.currNode instanceof kdLeaf) {
-                
+                if(this.currNode.draw) {
+                    addAction("Leaf Node - Testing all contained balls")
+                } else {
+                    addAction("Edge Node - Testing all intersected balls")
+                }
                 await genPromise()
                 let res = await rayHitListOfShapes(this.currNode.myList, ray, balls)
                 if(res.hit) {
@@ -50,8 +61,8 @@ export class kdTree implements partitioningSystem {
                 }
             }
             if(this.currNode instanceof kdBranch) {
-                await genPromise()
-                let p = ray.direction[0] > 0
+                addAction(`Branch Node - ${axises[this.currNode.axis]}|${this.currNode.value.toFixed(0)}`)
+                let p = ray.direction[this.currNode.axis] > 0
                 if(p) {
                     stack.push(this.currNode.greater)
                     stack.push(this.currNode.onTheLine)
@@ -112,7 +123,7 @@ export class kdTree implements partitioningSystem {
         }
 
         let offset = 0
-        if(this.currNode) {
+        if(this.currNode && (this.currNode instanceof kdBranch || (this.currNode instanceof kdLeaf && this.currNode.draw))) {
             offset = 6
             //bottom
             vertices.push([this.currNode.aabb.min[0], this.currNode.aabb.min[1],  LINE_RED])
@@ -158,8 +169,10 @@ class kdNode {
 
 class kdLeaf extends kdNode {
     myList:Array<number>
-    constructor(myList:Array<number>, aabb:AABB) {
+    draw:boolean
+    constructor(myList:Array<number>, aabb:AABB, draw:boolean) {
         super(aabb)
+        this.draw = draw
         this.myList = myList;
 
     }
@@ -208,15 +221,15 @@ class kdBranch extends kdNode {
         if(lesserList.length > OPTIMAL_SIZE && layer < MAX_LAYER){
             this.lesser = new kdBranch(balls, lesserList, lesserAABB, layer+1)
         } else {
-            this.lesser = new kdLeaf(lesserList, lesserAABB)
+            this.lesser = new kdLeaf(lesserList, lesserAABB, true)
         }
 
-        this.onTheLine = new kdLeaf(myList, lineAABB)
+        this.onTheLine = new kdLeaf(myList, lineAABB, false)
 
         if(greaterList.length > OPTIMAL_SIZE && layer < MAX_LAYER){
-            this.greater = new kdBranch(balls, greaterList, greaterAABB, layer+1)
+            this.greater = new kdBranch(balls, greaterList, greaterAABB, layer+ 1)
         } else {
-            this.greater = new kdLeaf(greaterList, greaterAABB)
+            this.greater = new kdLeaf(greaterList, greaterAABB, true)
         }
     }
 

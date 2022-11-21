@@ -1,6 +1,6 @@
 import * as glm from "gl-matrix" 
 import {Ray, AABB} from "../ray"
-import { BALL_RADIUS, SPACE_WIDTH, SPACE_HEIGHT, genPromise, selectBall} from "../graphics"
+import { BALL_RADIUS, SPACE_WIDTH, SPACE_HEIGHT, genPromise, selectBall, addAction, formatAABB} from "../graphics"
 import { Shader } from "../shader"
 import { partitioningSystem, rayHitListOfShapes } from "./partitioningSystem"
 
@@ -34,13 +34,17 @@ export class quadTree implements partitioningSystem {
             if(!this.currNode) {
                 throw "AHHHHHHHHHHHHHHH why is quadtree's currnode undefined, this should never happen"
             }
+            addAction(`Current Node: ${formatAABB(this.currNode.aabb)}`)
 
             let res = ray.intersectAABB(this.currNode.aabb)
             if(!res.hit) {
+                addAction("Ray does not intersect this node, skipping")
+                await genPromise()
                 continue
             }
 
-            if(this.currNode instanceof quadLeaf) {              
+            if(this.currNode instanceof quadLeaf) {      
+                addAction("Leaf Node - Testing all contained balls")
                 await genPromise()
                 let res = await rayHitListOfShapes(this.currNode.myList, ray, balls)
                 if(res.hit) {
@@ -49,6 +53,7 @@ export class quadTree implements partitioningSystem {
             }
 
             if(this.currNode instanceof quadBranch) {
+                addAction(`Branch Node - Split{${this.currNode.halfX}, ${this.currNode.halfY}}`)
                 await genPromise()
                 let xp = ray.direction[0] > 0
                 let yp = ray.direction[1] > 0

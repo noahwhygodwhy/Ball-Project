@@ -1,6 +1,6 @@
 import * as glm from "gl-matrix" 
 import {Ray, AABB} from "../ray"
-import { BALL_RADIUS, SPACE_WIDTH, SPACE_HEIGHT, genPromise, selectBall} from "../graphics"
+import { BALL_RADIUS, SPACE_WIDTH, SPACE_HEIGHT, genPromise, selectBall, addAction, formatAABB} from "../graphics"
 import { Shader } from "../shader"
 import { partitioningSystem, rayHitListOfShapes } from "./partitioningSystem"
 const LINE_RED = 1.00
@@ -73,8 +73,11 @@ export class unigrid implements partitioningSystem{
         while(hitResult.hit) {
             if(gridCoord.x > this.gridX-1 || gridCoord.x < 0 || gridCoord.y > this.gridY-1 || gridCoord.y < 0) {
                 //then it went off the screen, so it's done
+                addAction("Ray went off screen, breaking.")
                 break
             }
+            addAction(`At Grid - ${formatAABB(this.currAABB)}`)
+            await(genPromise)
 
             let res = await rayHitListOfShapes(this.grid[gridCoord.y][gridCoord.x], ray, balls)            
             if(res.hit) {

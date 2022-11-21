@@ -30,12 +30,45 @@ var selectedBall = -1;
 var showSteps = false
 
 
+
+var actionLog:Array<string> = []
+
+
 //lol ts is a bit silly
 const PART_SYSTEMS:(typeof bruteForce | typeof unigrid | typeof kdTree | typeof quadTree)[] = [bruteForce, unigrid, quadTree, kdTree]
 var partSystem:(typeof bruteForce | typeof unigrid | typeof kdTree | typeof quadTree) = bruteForce
 
+
+
+export function formatBall(b:glm.vec2):(string) {
+
+    return "Ball{" + formatFloat(b[0]) + "," + formatFloat(b[1]) +"}"
+
+    
+}
+
+function formatFloat(f:number): (string){
+    return f.toFixed(0);
+}
+
+export function formatAABB(ab: AABB) {
+   return `AABB{min[${ab.min[0].toFixed(0)},${ab.min[1].toFixed(0)}],max[${ab.max[0].toFixed(0)},${ab.max[1].toFixed(0)}]}`
+}
+
 function setShowSteps(e:any) {
     showSteps = e.target.checked
+}
+
+var currSteps = 0;
+
+var numSteps: Array<number> = []
+var avgSteps: number = 0
+
+export function addStep() {
+    currSteps +=1; 
+}
+function resetSteps() {
+    currSteps = 0;
 }
 
 
@@ -53,6 +86,14 @@ export async function genPromise(){
 
 export function selectBall(i:number){
     selectedBall = i
+}
+
+export function resetActions() {
+    actionLog = []
+}
+
+export function addAction(s:string){
+    actionLog.unshift(s)
 }
 
 function main() {
@@ -161,7 +202,6 @@ function main() {
     let deltaTime = 0;
     let cTime = 0
 
-    var currSteps = 0;
     var minT:number = Number.MAX_VALUE;
     var minIdx:number = -1;
 
@@ -182,6 +222,24 @@ function main() {
         if(stepsElement != null) {
             stepsElement.innerText = String(currSteps);
         }
+
+        let totalBallsElem = document.getElementById("totalBallsText");
+        if(totalBallsElem != null) {
+            totalBallsElem.innerText = String(positions.length);
+        }
+        
+        let lognElem = document.getElementById("logNBallsText");
+        if(lognElem != null) {
+            lognElem.innerText = String(Math.log2(positions.length).toFixed(1));
+        }
+
+        let avgElem = document.getElementById("avgBallsText")
+        if(avgElem != null) {
+            avgElem.innerText = String(avgSteps);
+        }
+
+
+
         let mintElement = document.getElementById("minT");
         if(mintElement != null) {
             mintElement.innerText = String(minT);
@@ -190,6 +248,19 @@ function main() {
         if(miniElement != null) {
             miniElement.innerText = String(minIdx);
         }
+        let actionLogElem = document.getElementById("actionLog") as HTMLTextAreaElement;
+        if(actionLogElem != null) {
+            let s = ""
+            if(actionLog.length > 0) {
+                s = actionLog.reduce((a, c) => a + "\r\n" + c)
+            }
+            // actionLog.forEach(t=>{
+            //     s += t
+            //     s+= "\n"
+            // })
+            actionLogElem.value = s;
+        }
+
     }
 
     function getRayFromEvent(e:MouseEvent):Ray{
@@ -204,20 +275,50 @@ function main() {
         return theRay
     }
 
+
+    function redoAverage(){
+        let e:number = 0
+        if(numSteps.length > 0) {
+            numSteps.forEach(r => e += r);
+            e /= numSteps.length
+        }
+        avgSteps = e
+    }
     
     async function handleClick(e:MouseEvent) {
-
-        if(go) {
-            go = false
-            partitioning = new partSystem(positions)
-            let theRay:Ray = getRayFromEvent(e);
-            await genPromise()
-            let hitResult = await partitioning.intersectTest(theRay,positions);
-            if(hitResult) {
-                positions = positions.filter((v, i)=>i!=hitResult.idx);
-                velocities = velocities.filter((v, i)=>i!=hitResult.idx);
+        try 
+        {
+            if(go) {
+                go = false
+                resetActions()
+                resetSteps()
+                addAction("Starting RayTest")
+                partitioning = new partSystem(positions)
+                let theRay:Ray = getRayFromEvent(e);
+                addAction(`Ray: origin {${formatFloat(theRay.origin[0])}, ${formatFloat(theRay.origin[1])}}, direction {${theRay.direction[0].toFixed(3)}, ${theRay.direction[1].toFixed(3)}}`)
+                await genPromise()
+                let hitResult = await partitioning.intersectTest(theRay,positions);
+                if(hitResult.hit) {
+                    let theBall = glm.vec2.fromValues(positions[hitResult.idx][0], positions[hitResult.idx][1]);
+                    addAction("RayTest finished, hit " + formatBall(theBall))
+                    positions = positions.filter((v, i)=>i!=hitResult.idx);
+                    velocities = velocities.filter((v, i)=>i!=hitResult.idx);
+                }
+                else {
+                    addAction("RayTest finished, no hit")
+                }
+                numSteps.push(currSteps)
+                redoAverage()
+                await genPromise()
+                partitioning = null
+                go = true
             }
-            await genPromise()
+        }
+        catch(e){
+            resetActions()
+            addAction("something went wrong?")
+            addAction(String(e))
+            selectBall(-1)
             partitioning = null
             go = true
         }
@@ -227,12 +328,16 @@ function main() {
 
     function nextMode() {
         if(go){
+            numSteps = []
+            avgSteps = 0
             currMethod = (currMethod+1)%neighborMethods.length;
             partSystem = PART_SYSTEMS[currMethod];
         }
     }
     function prevMode() {
         if(go) {
+            numSteps = []
+            avgSteps = 0
             currMethod = (currMethod-1)
             if(currMethod < 0) {currMethod = neighborMethods.length-1}
             partSystem = PART_SYSTEMS[currMethod];
